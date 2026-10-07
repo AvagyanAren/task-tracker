@@ -1,0 +1,7 @@
+node_modules/
+dist/
+data/tracker.json
+data/tracker.json.bak
+data/tracker.json.tmp
+*.log
+data/toggl-sample.csv
