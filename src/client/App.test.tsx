@@ -94,6 +94,7 @@ describe('интерфейс трекера (сквозной сценарий)'
 
     const row2 = screen.getByText('Платежи v2').closest('.entry') as HTMLElement;
     fireEvent.click(within(row2).getByTitle('Удалить'));
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Удалить' }));
     await waitFor(() => expect(store.get().entries.some((e) => e.description === 'Платежи v2')).toBe(false));
   });
 

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs><mask id="tempo-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="48" height="48"><rect width="48" height="48" fill="#fff"/><path d="M24 34 31 8" stroke="#000" stroke-width="8" stroke-linecap="round"/></mask></defs>
+  <path d="M15.5 41 20.5 15h7l5 26z" stroke="#d97757" stroke-width="3" stroke-linejoin="round" mask="url(#tempo-cut)"/>
+  <path d="M24 34 31 8" stroke="#d97757" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="27.6" cy="21.5" r="3.4" fill="#d97757"/>
+</svg>

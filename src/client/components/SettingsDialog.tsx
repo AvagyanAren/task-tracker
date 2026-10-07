@@ -1,3 +1,4 @@
+import { confirmDialog } from '../confirm.js';
 import { useState } from 'react';
 import { Computer, Moon, Sun } from '../icons.js';
 import { api } from '../api.js';
@@ -38,7 +39,7 @@ function DataSection() {
   };
 
   const restore = async (mode: 'merge' | 'replace') => {
-    if (mode === 'replace' && !confirm('Заменить ВСЕ текущие данные содержимым файла? Это нельзя отменить.')) return;
+    if (mode === 'replace' && !(await confirmDialog({ title: 'Заменить все данные?', text: 'Текущие записи и проекты будут стёрты и заменены содержимым файла. Это нельзя отменить.', confirmLabel: 'Заменить', danger: true }))) return;
     try {
       const r = await api.restore(pending, mode);
       setState(r.state);

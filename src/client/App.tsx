@@ -12,6 +12,8 @@ import { BreakDialog } from './components/BreakDialog.js';
 import { FocusMode } from './components/FocusMode.js';
 import { HelpDialog } from './components/HelpDialog.js';
 import { IdleDialog } from './components/IdleDialog.js';
+import { ConfirmHost } from './components/ConfirmHost.js';
+import { Logo } from './components/Logo.js';
 import { Login } from './components/Login.js';
 import { ImportView } from './components/ImportView.js';
 import { ProjectsView } from './components/ProjectsView.js';
@@ -167,9 +169,7 @@ export default function App() {
       <div className="shell">
         <aside className="sidebar">
           <div className="brand">
-            <span className="brand-mark">
-              <Timer size={18} />
-            </span>
+            <Logo size={32} />
             <span className="brand-name">Tempo</span>
           </div>
 
@@ -213,6 +213,7 @@ export default function App() {
         {focus && <FocusMode pomo={pomo} onClose={() => setFocus(false)} />}
         {idle && <IdleDialog info={idle} onClose={() => setIdle(null)} />}
         <BreakDialog pomo={pomo} />
+        <ConfirmHost />
       </div>
     </Ctx.Provider>
   );

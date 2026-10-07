@@ -1,3 +1,4 @@
+import { confirmDialog } from '../confirm.js';
 import { useMemo, useState } from 'react';
 import type { Entry } from '../../shared/types.js';
 import { entrySeconds } from '../../shared/report.js';
@@ -80,7 +81,7 @@ export function EntryList() {
           <button className="btn icon ghost" title="Править" onClick={() => setDialog({ entry: e })}>
             <Pencil size={15} />
           </button>
-          <button className="btn icon ghost danger" title="Удалить" onClick={() => confirm('Удалить эту запись?') && run(() => api.deleteEntry(e.id))}>
+          <button className="btn icon ghost danger" title="Удалить" onClick={async () => (await confirmDialog({ title: 'Удалить запись?', text: 'Это действие нельзя отменить.', confirmLabel: 'Удалить', danger: true })) && run(() => api.deleteEntry(e.id))}>
             <Trash size={15} />
           </button>
         </span>

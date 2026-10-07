@@ -165,7 +165,7 @@ label.field, .field { display: flex; flex-direction: column; gap: 5px; }
   padding: 20px 14px; background: var(--surface); border-right: 1px solid var(--border);
 }
 .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 22px; }
-.brand-mark { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: #fff; background: var(--accent); }
+
 .brand-name { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; }
 .nav { display: flex; flex-direction: column; gap: 4px; }
 .sidebar-foot { margin-top: auto; display: flex; flex-direction: column; gap: 4px; padding-top: 12px; border-top: 1px solid var(--border); }
@@ -580,3 +580,13 @@ input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-o
 *::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
 *::-webkit-scrollbar-thumb:hover { background: var(--text-3); background-clip: content-box; border: 3px solid transparent; }
 *::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- confirm modal ---------- */
+.confirm-overlay { z-index: 300; }
+.dialog.confirm { width: min(400px, 100%); display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 24px; }
+.confirm-icon { display: grid; place-items: center; width: 42px; height: 42px; margin-bottom: 8px; border-radius: 12px; background: var(--danger-soft); color: var(--danger); }
+.confirm h2 { font-size: 18px; }
+.confirm p { margin: 0; color: var(--text-2); line-height: 1.5; }
+.confirm-actions { display: flex; justify-content: flex-end; gap: 8px; width: 100%; margin-top: 18px; }
+.btn.danger-solid { background: var(--danger); color: #fff; }
+.btn.danger-solid:hover:not(:disabled) { filter: brightness(0.92); }

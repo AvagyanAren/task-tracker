@@ -1,6 +1,6 @@
+import { Logo } from './Logo.js';
 import { useState } from 'react';
 import { api } from '../api.js';
-import { Timer } from '../icons.js';
 
 /** Shown by the online version until the shared password is entered. */
 export function Login({ onDone }: { onDone: () => void }) {
@@ -27,9 +27,7 @@ export function Login({ onDone }: { onDone: () => void }) {
   return (
     <div className="login">
       <form className="login-card" onSubmit={(e) => void submit(e)}>
-        <span className="brand-mark">
-          <Timer size={22} />
-        </span>
+        <Logo size={48} />
         <h1>Tempo</h1>
         <p className="muted">Введите пароль, чтобы открыть трекер времени.</p>
         <input type="password" autoFocus autoComplete="current-password" placeholder="Пароль" value={password} onChange={(e) => setPassword(e.target.value)} aria-label="Пароль" />

@@ -1,3 +1,4 @@
+import { confirmDialog } from '../confirm.js';
 import { useMemo, useState } from 'react';
 import type { Project } from '../../shared/types.js';
 import { entrySeconds } from '../../shared/report.js';
@@ -159,7 +160,7 @@ export function ProjectsView() {
                               className="btn icon ghost"
                               aria-label={`Удалить ${p.name}`}
                               title="Удалить"
-                              onClick={() => confirm(`Удалить проект «${p.name}»?`) && void run(() => api.deleteProject(p.id))}
+                              onClick={async () => (await confirmDialog({ title: `Удалить проект «${p.name}»?`, text: 'Проект без записей будет удалён навсегда.', confirmLabel: 'Удалить', danger: true })) && void run(() => api.deleteProject(p.id))}
                             >
                               <Trash size={16} />
                             </button>
