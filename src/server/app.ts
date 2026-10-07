@@ -3,7 +3,9 @@ import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import type { Entry, Project, State } from '../shared/types.js';
-import { Store } from './store.js';
+import { createAuth } from './auth.js';
+import { BackupError, mergeState, parseBackup } from './restore.js';
+import type { StateStore } from './store.js';
 import { importToggl } from './toggl.js';
 
 class HttpError extends Error {
@@ -45,11 +47,30 @@ function cleanProject(body: Record<string, unknown>, partial: boolean): Partial<
   return out;
 }
 
-export function createApp(store: Store) {
+type Handler = (req: express.Request, res: express.Response) => Promise<unknown>;
+/** Express 4 does not catch rejected promises; this passes them to the error handler. */
+const h =
+  (fn: Handler): express.RequestHandler =>
+  (req, res, next) => {
+    fn(req, res).catch(next);
+  };
+
+export interface AppOptions {
+  /** Shared password for the online version. Empty = no login (local use). */
+  password?: string;
+}
+
+export function createApp(store: StateStore, options: AppOptions = {}) {
   const app = express();
   app.use(express.json({ limit: '20mb' }));
 
-  const snapshot = () => store.get();
+  const auth = createAuth(options.password);
+  app.post('/api/login', h((req, res) => auth.login(req, res)));
+  app.post('/api/logout', (req, res) => auth.logout(req, res));
+  app.get('/api/session', (req, res) => auth.session(req, res));
+  app.use('/api', auth.guard);
+
+  const snapshot = async (): Promise<State> => store.get();
   const nameTaken = (s: State, name: string, exceptId?: string) =>
     s.projects.some((p) => p.id !== exceptId && p.name.trim().toLowerCase() === name.trim().toLowerCase());
   const checkProject = (s: State, id: unknown) => {
@@ -58,164 +79,228 @@ export function createApp(store: Store) {
     return String(id);
   };
 
-  app.get('/api/state', (_req, res) => res.json(snapshot()));
+  app.get('/api/state', h(async (_req, res) => res.json(await snapshot())));
 
   /* ---------------- projects ---------------- */
 
-  app.post('/api/projects', (req, res) => {
-    const fields = cleanProject(req.body ?? {}, false);
-    store.update((s) => {
-      if (nameTaken(s, fields.name!)) throw new HttpError(409, 'Проект с таким названием уже есть.');
-      s.projects.push({
-        id: randomUUID(),
-        name: fields.name!,
-        rate: fields.rate ?? 0,
-        currency: fields.currency ?? '$',
-        color: fields.color ?? '#2f6feb',
-        archived: false,
-        createdAt: new Date().toISOString()
+  app.post(
+    '/api/projects',
+    h(async (req, res) => {
+      const fields = cleanProject(req.body ?? {}, false);
+      await store.update((s) => {
+        if (nameTaken(s, fields.name!)) throw new HttpError(409, 'Проект с таким названием уже есть.');
+        s.projects.push({
+          id: randomUUID(),
+          name: fields.name!,
+          rate: fields.rate ?? 0,
+          currency: fields.currency ?? '$',
+          color: fields.color ?? '#2f6feb',
+          archived: false,
+          createdAt: new Date().toISOString()
+        });
       });
-    });
-    res.json(snapshot());
-  });
+      res.json(await snapshot());
+    })
+  );
 
-  app.put('/api/projects/:id', (req, res) => {
-    const fields = cleanProject(req.body ?? {}, true);
-    store.update((s) => {
-      const p = s.projects.find((x) => x.id === req.params.id);
-      if (!p) throw new HttpError(404, 'Проект не найден.');
-      if (fields.name && nameTaken(s, fields.name, p.id)) throw new HttpError(409, 'Проект с таким названием уже есть.');
-      Object.assign(p, fields);
-    });
-    res.json(snapshot());
-  });
+  app.put(
+    '/api/projects/:id',
+    h(async (req, res) => {
+      const fields = cleanProject(req.body ?? {}, true);
+      await store.update((s) => {
+        const p = s.projects.find((x) => x.id === req.params.id);
+        if (!p) throw new HttpError(404, 'Проект не найден.');
+        if (fields.name && nameTaken(s, fields.name, p.id)) throw new HttpError(409, 'Проект с таким названием уже есть.');
+        Object.assign(p, fields);
+      });
+      res.json(await snapshot());
+    })
+  );
 
-  app.delete('/api/projects/:id', (req, res) => {
-    store.update((s) => {
-      if (!s.projects.some((p) => p.id === req.params.id)) throw new HttpError(404, 'Проект не найден.');
-      if (s.entries.some((e) => e.projectId === req.params.id)) {
-        throw new HttpError(409, 'В проекте есть записи времени — его можно только архивировать.');
-      }
-      s.projects = s.projects.filter((p) => p.id !== req.params.id);
-    });
-    res.json(snapshot());
-  });
+  app.delete(
+    '/api/projects/:id',
+    h(async (req, res) => {
+      await store.update((s) => {
+        if (!s.projects.some((p) => p.id === req.params.id)) throw new HttpError(404, 'Проект не найден.');
+        if (s.entries.some((e) => e.projectId === req.params.id)) {
+          throw new HttpError(409, 'В проекте есть записи времени — его можно только архивировать.');
+        }
+        s.projects = s.projects.filter((p) => p.id !== req.params.id);
+      });
+      res.json(await snapshot());
+    })
+  );
 
   /* ---------------- timer ---------------- */
 
-  app.post('/api/timer/start', (req, res) => {
-    store.update((s) => {
-      const now = new Date().toISOString();
-      const running = s.entries.find((e) => e.end === null);
-      if (running) running.end = now; // like Toggl: starting a new timer stops the old one
-      s.entries.push({
-        id: randomUUID(),
-        description: String(req.body?.description ?? '').trim().slice(0, 500),
-        projectId: checkProject(s, req.body?.projectId),
-        tags: cleanTags(req.body?.tags),
-        billable: req.body?.billable === undefined ? true : Boolean(req.body.billable),
-        start: now,
-        end: null,
-        source: 'timer'
+  app.post(
+    '/api/timer/start',
+    h(async (req, res) => {
+      await store.update((s) => {
+        const now = new Date().toISOString();
+        const running = s.entries.find((e) => e.end === null);
+        if (running) running.end = now; // like Toggl: starting a new timer stops the old one
+        s.entries.push({
+          id: randomUUID(),
+          description: String(req.body?.description ?? '').trim().slice(0, 500),
+          projectId: checkProject(s, req.body?.projectId),
+          tags: cleanTags(req.body?.tags),
+          billable: req.body?.billable === undefined ? true : Boolean(req.body.billable),
+          start: now,
+          end: null,
+          source: 'timer'
+        });
       });
-    });
-    res.json(snapshot());
-  });
+      res.json(await snapshot());
+    })
+  );
 
-  app.post('/api/timer/stop', (_req, res) => {
-    store.update((s) => {
-      const running = s.entries.find((e) => e.end === null);
-      if (running) running.end = new Date().toISOString();
-    });
-    res.json(snapshot());
-  });
+  app.post(
+    '/api/timer/stop',
+    h(async (_req, res) => {
+      await store.update((s) => {
+        const running = s.entries.find((e) => e.end === null);
+        if (running) running.end = new Date().toISOString();
+      });
+      res.json(await snapshot());
+    })
+  );
 
   /* ---------------- entries ---------------- */
 
-  app.post('/api/entries', (req, res) => {
-    const { start, end } = req.body ?? {};
-    if (!isIso(start) || !isIso(end)) throw new HttpError(400, 'Укажите начало и конец.');
-    if (Date.parse(end) <= Date.parse(start)) throw new HttpError(400, 'Конец должен быть позже начала.');
-    store.update((s) => {
-      s.entries.push({
-        id: randomUUID(),
-        description: String(req.body?.description ?? '').trim().slice(0, 500),
-        projectId: checkProject(s, req.body?.projectId),
-        tags: cleanTags(req.body?.tags),
-        billable: req.body?.billable === undefined ? true : Boolean(req.body.billable),
-        start: new Date(start).toISOString(),
-        end: new Date(end).toISOString(),
-        source: 'manual'
+  app.post(
+    '/api/entries',
+    h(async (req, res) => {
+      const { start, end } = req.body ?? {};
+      if (!isIso(start) || !isIso(end)) throw new HttpError(400, 'Укажите начало и конец.');
+      if (Date.parse(end) <= Date.parse(start)) throw new HttpError(400, 'Конец должен быть позже начала.');
+      await store.update((s) => {
+        s.entries.push({
+          id: randomUUID(),
+          description: String(req.body?.description ?? '').trim().slice(0, 500),
+          projectId: checkProject(s, req.body?.projectId),
+          tags: cleanTags(req.body?.tags),
+          billable: req.body?.billable === undefined ? true : Boolean(req.body.billable),
+          start: new Date(start).toISOString(),
+          end: new Date(end).toISOString(),
+          source: 'manual'
+        });
       });
-    });
-    res.json(snapshot());
-  });
+      res.json(await snapshot());
+    })
+  );
 
-  app.put('/api/entries/:id', (req, res) => {
-    const b = req.body ?? {};
-    store.update((s) => {
-      const e = s.entries.find((x) => x.id === req.params.id);
-      if (!e) throw new HttpError(404, 'Запись не найдена.');
-      const next: Entry = { ...e };
-      if (b.description !== undefined) next.description = String(b.description).trim().slice(0, 500);
-      if (b.projectId !== undefined) next.projectId = checkProject(s, b.projectId);
-      if (b.tags !== undefined) next.tags = cleanTags(b.tags);
-      if (b.billable !== undefined) next.billable = Boolean(b.billable);
-      if (b.start !== undefined) {
-        if (!isIso(b.start)) throw new HttpError(400, 'Некорректное начало.');
-        next.start = new Date(b.start).toISOString();
-      }
-      if (b.end !== undefined) {
-        if (b.end === null) {
-          if (s.entries.some((x) => x.id !== e.id && x.end === null)) {
-            throw new HttpError(409, 'Уже идёт другой таймер.');
-          }
-          next.end = null;
-        } else {
-          if (!isIso(b.end)) throw new HttpError(400, 'Некорректный конец.');
-          next.end = new Date(b.end).toISOString();
+  app.put(
+    '/api/entries/:id',
+    h(async (req, res) => {
+      const b = req.body ?? {};
+      await store.update((s) => {
+        const e = s.entries.find((x) => x.id === req.params.id);
+        if (!e) throw new HttpError(404, 'Запись не найдена.');
+        const next: Entry = { ...e };
+        if (b.description !== undefined) next.description = String(b.description).trim().slice(0, 500);
+        if (b.projectId !== undefined) next.projectId = checkProject(s, b.projectId);
+        if (b.tags !== undefined) next.tags = cleanTags(b.tags);
+        if (b.billable !== undefined) next.billable = Boolean(b.billable);
+        if (b.start !== undefined) {
+          if (!isIso(b.start)) throw new HttpError(400, 'Некорректное начало.');
+          next.start = new Date(b.start).toISOString();
         }
-      }
-      if (next.end && Date.parse(next.end) <= Date.parse(next.start)) {
-        throw new HttpError(400, 'Конец должен быть позже начала.');
-      }
-      if (next.end === null && Date.parse(next.start) > Date.now() + 60_000) {
-        throw new HttpError(400, 'Начало идущего таймера не может быть в будущем.');
-      }
-      Object.assign(e, next);
-    });
-    res.json(snapshot());
-  });
+        if (b.end !== undefined) {
+          if (b.end === null) {
+            if (s.entries.some((x) => x.id !== e.id && x.end === null)) {
+              throw new HttpError(409, 'Уже идёт другой таймер.');
+            }
+            next.end = null;
+          } else {
+            if (!isIso(b.end)) throw new HttpError(400, 'Некорректный конец.');
+            next.end = new Date(b.end).toISOString();
+          }
+        }
+        if (next.end && Date.parse(next.end) <= Date.parse(next.start)) {
+          throw new HttpError(400, 'Конец должен быть позже начала.');
+        }
+        if (next.end === null && Date.parse(next.start) > Date.now() + 60_000) {
+          throw new HttpError(400, 'Начало идущего таймера не может быть в будущем.');
+        }
+        Object.assign(e, next);
+      });
+      res.json(await snapshot());
+    })
+  );
 
-  app.delete('/api/entries/:id', (req, res) => {
-    store.update((s) => {
-      if (!s.entries.some((e) => e.id === req.params.id)) throw new HttpError(404, 'Запись не найдена.');
-      s.entries = s.entries.filter((e) => e.id !== req.params.id);
-    });
-    res.json(snapshot());
-  });
+  app.delete(
+    '/api/entries/:id',
+    h(async (req, res) => {
+      await store.update((s) => {
+        if (!s.entries.some((e) => e.id === req.params.id)) throw new HttpError(404, 'Запись не найдена.');
+        s.entries = s.entries.filter((e) => e.id !== req.params.id);
+      });
+      res.json(await snapshot());
+    })
+  );
 
   /* ---------------- import ---------------- */
 
-  app.post('/api/import/toggl', (req, res) => {
-    const csv = String(req.body?.csv ?? '');
-    const offset = Number(req.body?.tzOffsetMinutes ?? 0);
-    if (!csv.trim()) throw new HttpError(400, 'Файл пустой.');
-    if (!Number.isFinite(offset)) throw new HttpError(400, 'Некорректный часовой пояс.');
-    const dryRun = Boolean(req.body?.dryRun);
+  app.post(
+    '/api/import/toggl',
+    h(async (req, res) => {
+      const csv = String(req.body?.csv ?? '');
+      const offset = Number(req.body?.tzOffsetMinutes ?? 0);
+      if (!csv.trim()) throw new HttpError(400, 'Файл пустой.');
+      if (!Number.isFinite(offset)) throw new HttpError(400, 'Некорректный часовой пояс.');
+      const dryRun = Boolean(req.body?.dryRun);
 
-    try {
-      if (dryRun) {
-        const summary = importToggl(structuredClone(snapshot()), csv, offset);
-        return res.json({ dryRun: true, summary });
+      try {
+        if (dryRun) {
+          const summary = importToggl(structuredClone(await snapshot()), csv, offset);
+          return res.json({ dryRun: true, summary });
+        }
+        const summary = await store.update((s) => importToggl(s, csv, offset));
+        res.json({ dryRun: false, summary, state: await snapshot() });
+      } catch (err) {
+        if (err instanceof HttpError) throw err;
+        throw new HttpError(400, err instanceof Error ? err.message : String(err));
       }
-      const summary = store.update((s) => importToggl(s, csv, offset));
-      res.json({ dryRun: false, summary, state: snapshot() });
-    } catch (err) {
-      if (err instanceof HttpError) throw err;
-      throw new HttpError(400, err instanceof Error ? err.message : String(err));
-    }
-  });
+    })
+  );
+
+  /* ---------------- backup / restore ---------------- */
+
+  app.get(
+    '/api/backup',
+    h(async (_req, res) => {
+      res.setHeader('Content-Disposition', `attachment; filename="tempo-backup-${new Date().toISOString().slice(0, 10)}.json"`);
+      res.json(await snapshot());
+    })
+  );
+
+  /** mode "merge" adds what is missing; "replace" swaps the whole database for the file. */
+  app.post(
+    '/api/restore',
+    h(async (req, res) => {
+      const mode = req.body?.mode === 'replace' ? 'replace' : 'merge';
+      let incoming: State;
+      try {
+        incoming = parseBackup(req.body?.state);
+      } catch (err) {
+        if (err instanceof BackupError) throw new HttpError(400, err.message);
+        throw err;
+      }
+      const summary = await store.update((s) => {
+        if (mode === 'replace') {
+          const result = { projects: incoming.projects.length, entries: incoming.entries.length, skipped: 0 };
+          s.projects = incoming.projects;
+          s.entries = incoming.entries;
+          return result;
+        }
+        return mergeState(s, incoming);
+      });
+      res.json({ mode, summary, state: await snapshot() });
+    })
+  );
+
+  /* ---------------- static files (local server) ---------------- */
 
   const staticDir = resolve(process.cwd(), 'dist/public');
   if (existsSync(staticDir)) {

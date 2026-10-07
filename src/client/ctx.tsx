@@ -14,6 +14,9 @@ export interface AppContext {
   setState: (s: State) => void;
   fail: (message: string) => void;
   notify: (message: string) => void;
+  /** True when the server asks for a password (online version). */
+  authRequired: boolean;
+  logout: () => void;
 }
 
 export const Ctx = createContext<AppContext | null>(null);

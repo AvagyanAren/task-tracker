@@ -21,6 +21,8 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
   } catch {
     data = undefined;
   }
+  // The session expired (or the password changed): the app shows the login screen.
+  if (res.status === 401 && path !== '/api/login') window.dispatchEvent(new Event('tempo:unauthorized'));
   if (!res.ok) {
     const msg = (data as { error?: string } | undefined)?.error;
     throw new Error(msg ?? `Ошибка сервера (${res.status}).`);
@@ -47,7 +49,24 @@ export interface ImportSummary {
   to: string | null;
 }
 
+export interface SessionInfo {
+  authRequired: boolean;
+  authenticated: boolean;
+}
+
+export interface RestoreResult {
+  mode: 'merge' | 'replace';
+  summary: { projects: number; entries: number; skipped: number };
+  state: State;
+}
+
 export const api = {
+  session: () => req<SessionInfo>('GET', '/api/session'),
+  login: (password: string) => req<SessionInfo>('POST', '/api/login', { password }),
+  logout: () => req<SessionInfo>('POST', '/api/logout'),
+  /** Full database as an object, to save as a backup file. */
+  backup: () => req<State>('GET', '/api/backup'),
+  restore: (state: unknown, mode: 'merge' | 'replace') => req<RestoreResult>('POST', '/api/restore', { state, mode }),
   state: () => req<State>('GET', '/api/state'),
   createProject: (p: ProjectInput) => req<State>('POST', '/api/projects', p),
   updateProject: (id: string, p: ProjectInput) => req<State>('PUT', `/api/projects/${id}`, p),

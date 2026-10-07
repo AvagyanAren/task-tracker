@@ -2,8 +2,18 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFil
 import { dirname } from 'node:path';
 import type { State } from '../shared/types.js';
 
+/**
+ * What the API needs from a database. The file store answers synchronously, the
+ * Redis store asynchronously; the app awaits both, so either can be plugged in.
+ */
+export interface StateStore {
+  get(): State | Promise<State>;
+  /** Runs `fn` on a copy; the change is kept and saved only if it does not throw. */
+  update<T>(fn: (draft: State) => T): T | Promise<T>;
+}
+
 /** Fills fields that older files do not have yet. */
-function normalize(raw: Partial<State>): State {
+export function normalize(raw: Partial<State>): State {
   return {
     projects: Array.isArray(raw.projects) ? raw.projects : [],
     entries: (Array.isArray(raw.entries) ? raw.entries : []).map((e) => ({
@@ -19,7 +29,7 @@ function normalize(raw: Partial<State>): State {
  * renamed into place, and the previous version is kept as `<file>.bak`, so a
  * crash in the middle of a save can never leave a half-written file.
  */
-export class Store {
+export class Store implements StateStore {
   private state: State;
 
   constructor(private readonly file: string) {

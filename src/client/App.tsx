@@ -12,6 +12,7 @@ import { BreakDialog } from './components/BreakDialog.js';
 import { FocusMode } from './components/FocusMode.js';
 import { HelpDialog } from './components/HelpDialog.js';
 import { IdleDialog } from './components/IdleDialog.js';
+import { Login } from './components/Login.js';
 import { ImportView } from './components/ImportView.js';
 import { ProjectsView } from './components/ProjectsView.js';
 import { ReportsView } from './components/ReportsView.js';
@@ -37,8 +38,38 @@ export default function App() {
   const [idle, setIdle] = useState<IdleInfo | null>(null);
   const tz = tzOffset();
 
+  const [auth, setAuth] = useState<'checking' | 'login' | 'ok'>('checking');
+  const [authRequired, setAuthRequired] = useState(false);
+
+  const boot = useCallback(() => {
+    api
+      .session()
+      .then(async (s) => {
+        setAuthRequired(s.authRequired);
+        if (s.authRequired && !s.authenticated) return setAuth('login');
+        setState(await api.state());
+        setAuth('ok');
+      })
+      .catch((e: Error) => setToast({ text: e.message, error: true }));
+  }, []);
+
+  useEffect(boot, [boot]);
+
+  // A request answered 401 (session expired or password changed): back to the login screen.
   useEffect(() => {
-    api.state().then(setState).catch((e: Error) => setToast({ text: e.message, error: true }));
+    const onUnauthorized = () => {
+      setState(null);
+      setAuth('login');
+    };
+    window.addEventListener('tempo:unauthorized', onUnauthorized);
+    return () => window.removeEventListener('tempo:unauthorized', onUnauthorized);
+  }, []);
+
+  const logout = useCallback(() => {
+    void api.logout().then(() => {
+      setState(null);
+      setAuth('login');
+    });
   }, []);
 
   const running = state?.entries.find((e) => e.end === null);
@@ -117,6 +148,8 @@ export default function App() {
     help: () => setDialog('help')
   });
 
+  if (auth === 'login') return <Login onDone={boot} />;
+
   if (!state) {
     return (
       <div className="boot">
@@ -125,7 +158,7 @@ export default function App() {
     );
   }
 
-  const ctx: AppContext = { state, now, tz, settings, setSettings, run, setState, fail, notify };
+  const ctx: AppContext = { state, now, tz, settings, setSettings, run, setState, fail, notify, authRequired, logout };
 
   return (
     <Ctx.Provider value={ctx}>
