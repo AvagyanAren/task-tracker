@@ -103,15 +103,16 @@ export function EntryList() {
         const m = money(entries);
         const groups = settings.groupSimilar ? groupSimilar(entries) : entries.map((e) => ({ key: e.id, entries: [e] }));
         return (
-          <section className="day" key={day}>
+          <section className="day-block" key={day}>
             <header className="day-head">
-              <strong>{formatDayTitle(day, today, yesterday)}</strong>
+              <h3>{formatDayTitle(day, today, yesterday)}</h3>
               <span className="day-sum">
                 {Object.keys(m).length > 0 && <span className="money">{formatMoneyMap(m)}</span>}
                 <span className="total">{formatHM(seconds)}</span>
               </span>
             </header>
 
+            <div className="day">
             {groups.map((g) => {
               if (g.entries.length === 1) return <Row key={g.key} e={g.entries[0]} />;
               const first = g.entries[0];
@@ -153,6 +154,7 @@ export function EntryList() {
                 </div>
               );
             })}
+            </div>
           </section>
         );
       })}

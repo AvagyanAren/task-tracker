@@ -292,9 +292,11 @@ label.field, .field { display: flex; flex-direction: column; gap: 5px; }
 .kbd { display: inline-block; min-width: 22px; text-align: center; font: 700 12px var(--font); padding: 1px 6px; border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 6px; background: var(--surface-2); color: var(--text-2); }
 
 /* ---------- entries ---------- */
-.entries { display: flex; flex-direction: column; gap: 18px; }
+.entries { display: flex; flex-direction: column; gap: 28px; }
 .day { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
-.day-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: var(--surface-2); border-bottom: 1px solid var(--border); font-weight: 700; }
+.day-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 0 4px 10px; font-weight: 700; }
+.day-head h3 { margin: 0; font-size: var(--fs-lg); font-weight: 800; letter-spacing: -.01em; color: var(--text); text-transform: capitalize; }
+.day-block { display: flex; flex-direction: column; }
 .day-sum { display: flex; align-items: center; gap: 14px; color: var(--text-2); font-weight: 600; }
 .day-sum .money { color: var(--success); }
 .day-sum .total { color: var(--text); font-weight: 800; }
