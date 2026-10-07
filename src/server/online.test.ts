@@ -2,7 +2,7 @@ import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
-import { RedisStore } from './redisStore.js';
+import { RedisStore, redisFromEnv } from './redisStore.js';
 import { BackupError, mergeState, parseBackup } from './restore.js';
 import type { State } from '../shared/types.js';
 
@@ -35,6 +35,16 @@ function fakeUpstash(hooks: { beforeEval?: (kv: Map<string, string>) => void } =
 const iso = (h: number) => new Date(Date.UTC(2026, 8, 10, h)).toISOString();
 const project = (id: string, name: string) => ({ id, name, rate: 10, currency: '$', color: '#000', archived: false, createdAt: iso(0) });
 const entry = (id: string, projectId: string | null, h = 8) => ({ id, description: id, projectId, tags: [], billable: true, start: iso(h), end: iso(h + 1) });
+
+describe('redisFromEnv', () => {
+  it('находит стандартные переменные и с произвольным префиксом', () => {
+    expect(redisFromEnv({ KV_REST_API_URL: 'https://a', KV_REST_API_TOKEN: 't1' })).toEqual({ url: 'https://a', token: 't1' });
+    expect(redisFromEnv({ UPSTASH_REDIS_REST_URL: 'https://b', UPSTASH_REDIS_REST_TOKEN: 't2' })).toEqual({ url: 'https://b', token: 't2' });
+    expect(redisFromEnv({ STORAGE_KV_REST_API_URL: 'https://c', STORAGE_KV_REST_API_TOKEN: 't3', STORAGE_KV_REST_API_READ_ONLY_TOKEN: 'ro' })).toEqual({ url: 'https://c', token: 't3' });
+    expect(redisFromEnv({ KV_REST_API_URL: 'https://a' })).toBeNull();
+    expect(redisFromEnv({})).toBeNull();
+  });
+});
 
 describe('RedisStore', () => {
   it('пустая база, запись, чтение и резервная копия предыдущей версии', async () => {

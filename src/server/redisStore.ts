@@ -31,9 +31,21 @@ export interface RedisOptions {
 
 /** Reads the connection from the variables the Vercel/Upstash integration creates. */
 export function redisFromEnv(env: NodeJS.ProcessEnv = process.env): RedisOptions | null {
-  const url = env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL;
-  const token = env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN;
-  return url && token ? { url, token } : null;
+  // The integration can add a custom prefix (e.g. STORAGE_KV_REST_API_URL), so match by suffix.
+  const pairs: Array<[RegExp, RegExp]> = [
+    [/(^|_)KV_REST_API_URL$/, /(^|_)KV_REST_API_TOKEN$/],
+    [/(^|_)UPSTASH_REDIS_REST_URL$/, /(^|_)UPSTASH_REDIS_REST_TOKEN$/]
+  ];
+  for (const [urlRe, tokenRe] of pairs) {
+    const urlKey = Object.keys(env).find((k) => urlRe.test(k) && env[k]);
+    if (!urlKey) continue;
+    const prefix = urlKey.replace(urlRe, '');
+    // Prefer the token with the same prefix; the read-only token is never used for writing.
+    const tokenKey =
+      Object.keys(env).find((k) => tokenRe.test(k) && k.startsWith(prefix) && env[k]) ?? Object.keys(env).find((k) => tokenRe.test(k) && env[k]);
+    if (tokenKey) return { url: env[urlKey]!, token: env[tokenKey]! };
+  }
+  return null;
 }
 
 export class RedisStore implements StateStore {
