@@ -7,7 +7,9 @@ import { api } from '../api.js';
 import { useApp } from '../ctx.js';
 import { formatMoney } from '../format.js';
 import { Archive, Briefcase, Check, Pencil, Plus, Refresh, Trash, X } from '../icons.js';
-import { Empty } from '../ui.js';
+import { Empty, Segmented } from '../ui.js';
+import { ClientsView } from './ClientsView.js';
+import { Select } from './fields.js';
 
 const COLORS = ['#7c5cff', '#2f6feb', '#12b886', '#f59f00', '#f03e6e', '#0ea5c6', '#e8590c', '#ae3ec9'];
 
@@ -17,7 +19,9 @@ export function ProjectsView() {
   const [rate, setRate] = useState('');
   const [currency, setCurrency] = useState('$');
   const [editing, setEditing] = useState<string | null>(null);
-  const [draft, setDraft] = useState({ name: '', rate: '', currency: '$', color: COLORS[0] });
+  const [draft, setDraft] = useState<{ name: string; rate: string; currency: string; color: string; clientId: string }>({ name: '', rate: '', currency: '$', color: COLORS[0], clientId: '' });
+  const [tab, setTab] = useState<'projects' | 'clients'>('projects');
+  const [newClient, setNewClient] = useState('');
   const [showArchived, setShowArchived] = useState(false);
 
   const totals = useMemo(() => {
@@ -38,7 +42,8 @@ export function ProjectsView() {
         name,
         rate: rate === '' ? 0 : Number(rate.replace(',', '.')),
         currency,
-        color: COLORS[state.projects.length % COLORS.length]
+        color: COLORS[state.projects.length % COLORS.length],
+        clientId: newClient || null
       })
     );
     if (ok) {
@@ -49,12 +54,12 @@ export function ProjectsView() {
 
   const startEdit = (p: Project) => {
     setEditing(p.id);
-    setDraft({ name: p.name, rate: String(p.rate), currency: p.currency, color: p.color });
+    setDraft({ name: p.name, rate: String(p.rate), currency: p.currency, color: p.color, clientId: p.clientId ?? '' });
   };
 
   const save = async (id: string) => {
     const ok = await run(() =>
-      api.updateProject(id, { name: draft.name, rate: Number(draft.rate.replace(',', '.')), currency: draft.currency, color: draft.color })
+      api.updateProject(id, { name: draft.name, rate: Number(draft.rate.replace(',', '.')), currency: draft.currency, color: draft.color, clientId: draft.clientId || null })
     );
     if (ok) setEditing(null);
   };
@@ -68,7 +73,21 @@ export function ProjectsView() {
           <h1>Проекты</h1>
           <p className="muted">Ставка за час нужна, чтобы отчёты считали деньги: часы × ставка проекта.</p>
         </div>
+        <Segmented<'projects' | 'clients'>
+          label="Раздел"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'projects', label: 'Проекты' },
+            { value: 'clients', label: 'Клиенты' }
+          ]}
+        />
       </header>
+
+      {tab === 'clients' ? (
+        <ClientsView />
+      ) : (
+      <>
 
       <section className="panel">
         <h3>Новый проект</h3>
@@ -76,6 +95,13 @@ export function ProjectsView() {
           <input placeholder="Название проекта" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && name.trim() && void create()} />
           <input placeholder="Ставка за час" inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} />
           <input className="narrow" title="Валюта" aria-label="Валюта" value={currency} onChange={(e) => setCurrency(e.target.value)} />
+          <Select<string>
+            value={newClient}
+            ariaLabel="Клиент"
+            placeholder="Клиент"
+            options={[{ value: '', label: 'Без клиента' }, ...state.clients.filter((c) => !c.archived).map((c) => ({ value: c.id, label: c.name }))]}
+            onChange={setNewClient}
+          />
           <button className="btn primary" disabled={!name.trim()} onClick={() => void create()}>
             <Plus size={16} /> Создать проект
           </button>
@@ -109,12 +135,20 @@ export function ProjectsView() {
                         <span className="row gap">
                           <input type="color" aria-label="Цвет" value={draft.color} onChange={(e) => setDraft({ ...draft, color: e.target.value })} />
                           <input aria-label="Название" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+                          <Select<string>
+                            value={draft.clientId}
+                            ariaLabel="Клиент"
+                            placeholder="Клиент"
+                            options={[{ value: '', label: 'Без клиента' }, ...state.clients.map((c) => ({ value: c.id, label: c.name }))]}
+                            onChange={(clientId) => setDraft({ ...draft, clientId })}
+                          />
                         </span>
                       ) : (
                         <span className="proj-cell">
                           <i className="dot" style={{ background: p.color }} />
                           <strong>{p.name}</strong>
                           {p.archived && <span className="badge">архив</span>}
+                          {p.clientId && <span className="muted small">· {state.clients.find((c) => c.id === p.clientId)?.name ?? ''}</span>}
                         </span>
                       )}
                     </td>
@@ -180,6 +214,8 @@ export function ProjectsView() {
         <label className="check">
           <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} /> Показывать архивные
         </label>
+      )}
+      </>
       )}
     </div>
   );

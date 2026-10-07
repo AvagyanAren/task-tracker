@@ -7,6 +7,79 @@ export interface Project {
   color: string;
   archived: boolean;
   createdAt: string;
+  /** Who is billed for this project; null = nobody yet. */
+  clientId?: string | null;
+}
+
+export interface Party {
+  name: string;
+  address: string;
+  email: string;
+}
+
+/** A person or company that gets invoices. */
+export interface Client extends Party {
+  id: string;
+  /** Tax / registration number printed on the invoice. */
+  taxId: string;
+  currency: string;
+  /** Default payment term for this client's invoices. */
+  dueDays: number;
+  notes: string;
+  archived: boolean;
+  createdAt: string;
+}
+
+export type InvoiceStatus = 'draft' | 'sent' | 'paid';
+
+export interface InvoiceLineRecord {
+  description: string;
+  hours: number;
+  rate: number;
+  amount: number;
+}
+
+/**
+ * A finished invoice. Everything printed on it is copied in (sender, client, lines),
+ * so editing a client or a time entry later never changes a document already sent.
+ * "Overdue" is not stored: it is a sent invoice whose due date has passed.
+ */
+export interface InvoiceRecord {
+  id: string;
+  number: string;
+  status: InvoiceStatus;
+  clientId: string | null;
+  projectIds: string[];
+  lang: 'ru' | 'en';
+  currency: string;
+  issueDate: string;
+  dueDate: string;
+  periodFrom: string;
+  periodTo: string;
+  sentAt: string | null;
+  paidAt: string | null;
+  sender: Party & { payment: string };
+  client: Party & { taxId: string };
+  lines: InvoiceLineRecord[];
+  totalHours: number;
+  subtotal: number;
+  discountPct: number;
+  discount: number;
+  taxPct: number;
+  tax: number;
+  total: number;
+  notes: string;
+  /** Time entries covered by this invoice (they are marked with `invoiceId`). */
+  entryIds: string[];
+  createdAt: string;
+}
+
+/** The sender's own details and defaults, shared by every invoice. */
+export interface Profile {
+  sender: Party & { payment: string };
+  lang: 'ru' | 'en';
+  dueDays: number;
+  notes: string;
 }
 
 /**
@@ -26,9 +99,14 @@ export interface Entry {
   source?: 'timer' | 'manual' | 'toggl';
   /** Stable key of an imported row, so re-importing never duplicates. */
   externalId?: string;
+  /** Set when the entry has been put on an invoice. */
+  invoiceId?: string | null;
 }
 
 export interface State {
   projects: Project[];
   entries: Entry[];
+  clients: Client[];
+  invoices: InvoiceRecord[];
+  profile: Profile;
 }

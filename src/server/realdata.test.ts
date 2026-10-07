@@ -1,3 +1,4 @@
+import { blank } from '../shared/blank.js';
 import { existsSync, readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { buildReport, dayRangeToQuery } from '../shared/report.js';
@@ -8,7 +9,7 @@ import type { State } from '../shared/types.js';
 const file = 'data/toggl-sample.csv';
 
 describe.skipIf(!existsSync(file))('реальный экспорт Toggl', () => {
-  const state: State = { projects: [], entries: [] };
+  const state: State = { ...blank(), projects: [], entries: [] };
   let summary: ReturnType<typeof importToggl>;
   beforeAll(() => {
     summary = importToggl(state, readFileSync(file, 'utf8'), 240);

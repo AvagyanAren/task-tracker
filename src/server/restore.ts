@@ -65,6 +65,22 @@ export function mergeState(target: State, incoming: State): MergeSummary {
     target.entries.push({ ...e, projectId: e.projectId ? idMap.get(e.projectId) ?? null : null });
     summary.entries++;
   }
+
+  // Clients match by id or name; invoices by id or number, so loading a file twice adds nothing.
+  const clientMap = new Map<string, string>();
+  for (const c of incoming.clients) {
+    const same = target.clients.find((x) => x.id === c.id) ?? target.clients.find((x) => x.name.trim().toLowerCase() === c.name.trim().toLowerCase());
+    if (same) clientMap.set(c.id, same.id);
+    else {
+      target.clients.push({ ...c });
+      clientMap.set(c.id, c.id);
+    }
+  }
+  for (const p of target.projects) if (p.clientId && clientMap.has(p.clientId)) p.clientId = clientMap.get(p.clientId)!;
+  for (const inv of incoming.invoices) {
+    if (target.invoices.some((x) => x.id === inv.id || x.number === inv.number)) continue;
+    target.invoices.push({ ...inv, clientId: inv.clientId ? clientMap.get(inv.clientId) ?? null : null });
+  }
   keepOneRunning(target);
   return summary;
 }

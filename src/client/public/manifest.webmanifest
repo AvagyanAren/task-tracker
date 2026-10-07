@@ -1,0 +1,20 @@
+{
+  "name": "Tempo — трекер времени",
+  "short_name": "Tempo",
+  "description": "Трекер времени с отчётами и инвойсами",
+  "lang": "ru",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#1f1e1d",
+  "theme_color": "#1f1e1d",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ],
+  "shortcuts": [
+    { "name": "Отчёты", "url": "/#reports" }
+  ]
+}

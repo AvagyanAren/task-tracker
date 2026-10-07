@@ -1,7 +1,7 @@
 import { confirmDialog } from '../confirm.js';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Computer, Moon, Sun } from '../icons.js';
-import { api } from '../api.js';
+import { api, type BackupInfo } from '../api.js';
 import { useApp } from '../ctx.js';
 import { idleSupported, requestIdlePermission } from '../useIdle.js';
 import { askNotificationPermission } from '../sound.js';
@@ -13,6 +13,46 @@ function DataSection() {
   const { state, setState, notify, fail, authRequired, logout } = useApp();
   const [pending, setPending] = useState<unknown>(null);
   const [fileName, setFileName] = useState('');
+
+  const [copies, setCopies] = useState<BackupInfo[] | null>(null);
+  const loadCopies = () => api.backups().then(setCopies, () => setCopies([]));
+  useEffect(() => void loadCopies(), []);
+
+  const makeCopy = async () => {
+    try {
+      await api.createBackup();
+      await loadCopies();
+      notify('Копия сохранена');
+    } catch (err) {
+      fail(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const restoreCopy = async (c: BackupInfo) => {
+    const when = new Date(c.at).toLocaleString('ru-RU', { dateStyle: 'long', timeStyle: 'short' });
+    const ok = await confirmDialog({
+      title: 'Вернуть эту копию?',
+      text: `Данные станут такими, какими были ${when} (${c.entries} записей). Текущие данные сохранятся отдельной копией, так что вернуться обратно можно.`,
+      confirmLabel: 'Вернуть',
+      danger: true
+    });
+    if (!ok) return;
+    try {
+      const r = await api.restoreBackup(c.id);
+      setState(r.state);
+      await loadCopies();
+      notify('Копия возвращена. Прежние данные сохранены отдельной копией.');
+    } catch (err) {
+      fail(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const downloadCopy = (c: BackupInfo) => {
+    const a = document.createElement('a');
+    a.href = `/api/backups/${c.id}`;
+    a.download = `tempo-copy-${c.id}.json`;
+    a.click();
+  };
 
   const download = async () => {
     try {
@@ -82,6 +122,43 @@ function DataSection() {
           </div>
         </div>
       )}
+      <div className="copies">
+        <div className="copies-head">
+          <div className="srow-text">
+            <strong>Автоматические копии</strong>
+            <span>Раз в сутки на сервере и перед каждым возвратом. Хранятся последние 20.</span>
+          </div>
+          <button className="btn subtle" onClick={() => void makeCopy()}>
+            Сделать копию
+          </button>
+        </div>
+        {copies === null ? (
+          <div className="skeleton" style={{ height: 44 }} />
+        ) : copies.length === 0 ? (
+          <p className="hint">Копий пока нет. Первая появится сегодня ночью или по кнопке.</p>
+        ) : (
+          <ul className="copy-list">
+            {copies.slice(0, 6).map((c) => (
+              <li key={c.id}>
+                <span>
+                  <strong>{new Date(c.at).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</strong>
+                  <em className="muted">
+                    {c.entries} записей · {c.projects} проектов
+                  </em>
+                </span>
+                <span className="row gap">
+                  <button className="btn ghost sm" onClick={() => downloadCopy(c)}>
+                    Скачать
+                  </button>
+                  <button className="btn ghost sm" onClick={() => void restoreCopy(c)}>
+                    Вернуть
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       {authRequired && (
         <SettingRow title="Сессия" hint="Выйти из онлайн-версии на этом устройстве">
           <button className="btn ghost" onClick={logout}>

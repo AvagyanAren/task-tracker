@@ -1,5 +1,41 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type RefObject, type ReactNode } from 'react';
 import { X } from './icons.js';
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Keeps keyboard focus inside a modal: focus moves in when it opens, Tab and Shift+Tab wrap
+ * around its controls, and focus goes back to whatever opened it when it closes.
+ */
+export function useFocusTrap(ref: RefObject<HTMLElement>, active = true) {
+  useEffect(() => {
+    if (!active) return;
+    const box = ref.current;
+    if (!box) return;
+    const opener = document.activeElement as HTMLElement | null;
+    const items = () => [...box.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null || el === document.activeElement);
+    if (!box.contains(document.activeElement)) (items().find((el) => el.tagName !== 'BUTTON' || !el.getAttribute('aria-label')?.includes('Закрыть')) ?? box).focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const list = items();
+      if (list.length === 0) return e.preventDefault();
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && (document.activeElement === first || !box.contains(document.activeElement))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !box.contains(document.activeElement))) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    box.addEventListener('keydown', onKey);
+    return () => {
+      box.removeEventListener('keydown', onKey);
+      if (opener && document.contains(opener)) opener.focus();
+    };
+  }, [ref, active]);
+}
 
 export function Dialog({
   title,
@@ -14,6 +50,8 @@ export function Dialog({
   wide?: boolean;
   className?: string;
 }) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(boxRef);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
@@ -22,7 +60,7 @@ export function Dialog({
 
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`${wide ? 'dialog wide' : 'dialog'} ${className}`.trim()} role="dialog" aria-modal="true" aria-label={title}>
+      <div ref={boxRef} tabIndex={-1} className={`${wide ? 'dialog wide' : 'dialog'} ${className}`.trim()} role="dialog" aria-modal="true" aria-label={title}>
         <div className="dialog-head">
           <h2>{title}</h2>
           <button className="btn icon ghost" onClick={onClose} aria-label="Закрыть">

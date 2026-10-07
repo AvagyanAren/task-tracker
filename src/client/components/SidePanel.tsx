@@ -46,12 +46,6 @@ export function SidePanel() {
           ))}
         </div>
       </div>
-      <div className="panel hintbox">
-        <h3>Горячие клавиши</h3>
-        <p>
-          <kbd className="kbd">N</kbd> старт · <kbd className="kbd">S</kbd> стоп · <kbd className="kbd">M</kbd> вручную · <kbd className="kbd">C</kbd> продолжить
-        </p>
-      </div>
     </aside>
   );
 }

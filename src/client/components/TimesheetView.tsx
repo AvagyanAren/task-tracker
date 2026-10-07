@@ -48,6 +48,36 @@ export function TimesheetView() {
     }
   };
 
+  /**
+   * Spreadsheet-style keys: arrows move between cells (left/right only at the edge of the text,
+   * so editing still works), Enter saves and goes down, Escape puts the old value back.
+   * Moving focus first makes the browser blur, and so save, the cell being left.
+   */
+  const cellKey = (e: React.KeyboardEvent<HTMLInputElement>, r: number, c: number, original: string, rowCount: number) => {
+    const input = e.currentTarget;
+    const go = (nr: number, nc: number) => {
+      if (nr < 0 || nr >= rowCount || nc < 0 || nc > 6) return false;
+      const next = input.closest('table')?.querySelector<HTMLInputElement>(`.ts-cell[data-r="${nr}"][data-c="${nc}"]`);
+      if (!next) return false;
+      e.preventDefault();
+      next.focus();
+      return true;
+    };
+    const atStart = input.selectionStart === 0 && input.selectionEnd === 0;
+    const atEnd = input.selectionStart === input.value.length && input.selectionEnd === input.value.length;
+    if (e.key === 'ArrowDown') go(r + 1, c);
+    else if (e.key === 'ArrowUp') go(r - 1, c);
+    else if (e.key === 'ArrowLeft' && atStart) go(r, c - 1);
+    else if (e.key === 'ArrowRight' && atEnd) go(r, c + 1);
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (!go(r + 1, c)) input.blur();
+    } else if (e.key === 'Escape') {
+      input.value = original;
+      input.blur();
+    }
+  };
+
   const addRow = () => {
     if (!newDesc.trim() && !newProject) return;
     setExtra((x) => [...x, { projectId: newProject, description: newDesc.trim() }]);
@@ -111,8 +141,11 @@ export function TimesheetView() {
                           defaultValue={hm(c.seconds)}
                           placeholder="–"
                           title={c.entries.length > 1 ? `${c.entries.length} записей — правьте в списке или календаре` : c.entries.some((e) => e.end === null) ? 'Идёт таймер' : ''}
+                          data-r={ri}
+                          data-c={di}
+                          onFocus={(e) => e.target.select()}
                           onBlur={(e) => e.target.value !== hm(c.seconds) && void commit(ri, di, e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                          onKeyDown={(e) => cellKey(e, ri, di, hm(c.seconds), rows.length)}
                           aria-label={`${r.description || 'Без названия'}, ${WD[di]}`}
                         />
                       </td>
@@ -156,7 +189,7 @@ export function TimesheetView() {
           <Plus size={15} /> Добавить строку
         </button>
       </div>
-      <p className="hint">Введите время в клетку (2:30, 2.5, 90m) и нажмите Enter. Пустая клетка удаляет запись. Клетки с несколькими записями правятся в списке.</p>
+      <p className="hint">Введите время в клетку (2:30, 2.5, 90m) и нажмите Enter. Стрелки перемещают по клеткам, Esc отменяет правку. Пустая клетка удаляет запись. Клетки с несколькими записями правятся в списке.</p>
     </div>
   );
 }

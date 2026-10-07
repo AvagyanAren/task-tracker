@@ -1,7 +1,10 @@
-import type { State } from '../shared/types.js';
+import type { Client, InvoiceRecord, Profile, State } from '../shared/types.js';
 
 /** Minutes EAST of UTC for the browser's current timezone (UTC+4 -> 240). */
 export const tzOffset = () => -new Date().getTimezoneOffset();
+
+/** The request never reached the server (offline, server down): safe to try again later. */
+export class NetworkError extends Error {}
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
   let res: Response;
@@ -12,7 +15,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
       body: body === undefined ? undefined : JSON.stringify(body)
     });
   } catch {
-    throw new Error('Нет связи с сервером трекера. Запущен ли start.bat?');
+    throw new NetworkError('Нет связи с сервером трекера.');
   }
   const text = await res.text();
   let data: unknown;
@@ -36,6 +39,29 @@ export interface ProjectInput {
   currency?: string;
   color?: string;
   archived?: boolean;
+  clientId?: string | null;
+}
+
+export type ClientInput = Partial<Pick<Client, 'name' | 'email' | 'address' | 'taxId' | 'currency' | 'dueDays' | 'notes' | 'archived'>>;
+
+export interface InvoiceInput {
+  clientId: string | null;
+  projectIds: string[];
+  entryIds: string[];
+  number?: string;
+  status?: 'draft' | 'sent';
+  lang: 'ru' | 'en';
+  currency: string;
+  issueDate: string;
+  dueDate: string;
+  periodFrom: string;
+  periodTo: string;
+  sender: Profile['sender'];
+  client: { name: string; address: string; email: string; taxId: string };
+  lines: Array<{ description: string; hours: number; rate: number }>;
+  discountPct: number;
+  taxPct: number;
+  notes: string;
 }
 
 export interface ImportSummary {
@@ -60,7 +86,24 @@ export interface RestoreResult {
   state: State;
 }
 
+export interface BackupInfo {
+  id: string;
+  at: string;
+  entries: number;
+  projects: number;
+}
+
 export const api = {
+  createClient: (c: ClientInput) => req<State>('POST', '/api/clients', c),
+  updateClient: (id: string, c: ClientInput) => req<State>('PUT', `/api/clients/${id}`, c),
+  deleteClient: (id: string) => req<State>('DELETE', `/api/clients/${id}`),
+  saveProfile: (p: Partial<Profile>) => req<State>('PUT', '/api/profile', p),
+  createInvoice: (b: InvoiceInput) => req<{ invoice: InvoiceRecord; state: State }>('POST', '/api/invoices', b),
+  updateInvoice: (id: string, patch: { status?: 'draft' | 'sent' | 'paid'; dueDate?: string; notes?: string }) => req<State>('PUT', `/api/invoices/${id}`, patch),
+  deleteInvoice: (id: string) => req<State>('DELETE', `/api/invoices/${id}`),
+  backups: () => req<BackupInfo[]>('GET', '/api/backups'),
+  createBackup: () => req<BackupInfo>('POST', '/api/backups'),
+  restoreBackup: (id: string) => req<{ state: State; savedAs: string }>('POST', `/api/backups/${id}/restore`),
   session: () => req<SessionInfo>('GET', '/api/session'),
   login: (password: string) => req<SessionInfo>('POST', '/api/login', { password }),
   logout: () => req<SessionInfo>('POST', '/api/logout'),
@@ -71,10 +114,11 @@ export const api = {
   createProject: (p: ProjectInput) => req<State>('POST', '/api/projects', p),
   updateProject: (id: string, p: ProjectInput) => req<State>('PUT', `/api/projects/${id}`, p),
   deleteProject: (id: string) => req<State>('DELETE', `/api/projects/${id}`),
-  startTimer: (description: string, projectId: string | null, tags: string[] = [], billable = true) =>
-    req<State>('POST', '/api/timer/start', { description, projectId, tags, billable }),
-  stopTimer: () => req<State>('POST', '/api/timer/stop'),
+  startTimer: (description: string, projectId: string | null, tags: string[] = [], billable = true, own?: { id: string; at: string }) =>
+    req<State>('POST', '/api/timer/start', { description, projectId, tags, billable, ...own }),
+  stopTimer: (own?: { id: string; at: string }) => req<State>('POST', '/api/timer/stop', own ?? {}),
   addEntry: (e: {
+    id?: string;
     description: string;
     projectId: string | null;
     start: string;

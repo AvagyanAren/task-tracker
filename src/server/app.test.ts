@@ -244,3 +244,138 @@ describe('теги, billable и правка бегущего таймера', (
     expect(r.body.state.entries.find((x: any) => x.description === 'X')).toMatchObject({ tags: ['ui', 'fix'], billable: true });
   });
 });
+
+describe('копии данных через API', () => {
+  it('создать, показать, скачать и восстановить с сохранением текущего состояния', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'bak-'));
+    const store = new Store(join(dir, 'tracker.json'));
+    const server = createApp(store).listen(0);
+    await new Promise((r) => server.once('listening', r));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const call = (m: string, p: string, body?: unknown) =>
+      fetch(base + p, { method: m, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+    try {
+      await call('POST', '/api/projects', { name: 'Первый' });
+      const made = (await (await call('POST', '/api/backups')).json()) as { id: string; projects: number };
+      expect(made.projects).toBe(1);
+      expect(((await (await call('GET', '/api/backups')).json()) as unknown[]).length).toBeGreaterThanOrEqual(1);
+
+      await call('POST', '/api/projects', { name: 'Второй' });
+      const back = await call('POST', `/api/backups/${made.id}/restore`);
+      const result = (await back.json()) as { state: { projects: unknown[] }; savedAs: string };
+      expect(result.state.projects).toHaveLength(1);
+      // состояние до восстановления не потеряно: оно лежит в новой копии
+      const saved = (await (await call('GET', `/api/backups/${result.savedAs}`)).json()) as { projects: unknown[] };
+      expect(saved.projects).toHaveLength(2);
+      expect((await call('GET', '/api/backups/..%2Fsecret')).status).toBe(404);
+    } finally {
+      await new Promise<void>((r) => server.close(() => r()));
+    }
+  });
+});
+
+describe('защита настоящих данных', () => {
+  it('тесты не могут открыть data/tracker.json', () => {
+    expect(() => new Store(join(process.cwd(), 'data/tracker.json'))).toThrow(/настоящий файл данных/);
+  });
+});
+
+describe('клиенты и счета', () => {
+  it('клиент → проект → счёт: номер, итоги, пометка записей, смена статуса, удаление возвращает время', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'inv-'));
+    const store = new Store(join(dir, 'tracker.json'));
+    const server = createApp(store).listen(0);
+    await new Promise((r) => server.once('listening', r));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const call = async (m: string, p: string, body?: unknown) => {
+      const res = await fetch(base + p, { method: m, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+      return { status: res.status, json: (await res.json()) as any };
+    };
+    try {
+      const c = await call('POST', '/api/clients', { name: 'Acme', email: 'a@acme.io', currency: '$', dueDays: 10 });
+      const clientId = c.json.clients[0].id as string;
+      expect((await call('POST', '/api/clients', { name: 'acme' })).status).toBe(409);
+
+      const p = await call('POST', '/api/projects', { name: 'Сайт', rate: 30, clientId });
+      const projectId = p.json.projects[0].id as string;
+      expect(p.json.projects[0].clientId).toBe(clientId);
+      expect((await call('POST', '/api/projects', { name: 'Битый', clientId: 'nope' })).status).toBe(400);
+      expect((await call('DELETE', `/api/clients/${clientId}`)).status).toBe(409); // есть проект
+
+      const e = await call('POST', '/api/entries', { description: 'Вёрстка', projectId, start: '2026-09-10T08:00:00.000Z', end: '2026-09-10T10:00:00.000Z' });
+      const entryId = e.json.entries[0].id as string;
+
+      const make = (extra: object = {}) =>
+        call('POST', '/api/invoices', {
+          clientId,
+          projectIds: [projectId],
+          entryIds: [entryId],
+          issueDate: '2026-09-30',
+          dueDate: '2026-10-10',
+          periodFrom: '2026-09-01',
+          periodTo: '2026-09-30',
+          currency: '$',
+          lines: [{ description: 'Вёрстка', hours: 2, rate: 30 }],
+          discountPct: 10,
+          taxPct: 20,
+          sender: { name: 'Я' },
+          client: { name: 'Acme' },
+          ...extra
+        });
+      const inv = await make();
+      expect(inv.json.invoice).toMatchObject({ number: 'INV-2026-001', status: 'draft', subtotal: 60, discount: 6, tax: 10.8, total: 64.8 });
+      expect(inv.json.state.entries[0].invoiceId).toBe(inv.json.invoice.id);
+      expect((await make({ number: 'INV-2026-001' })).status).toBe(409); // номер занят
+      expect((await make({ number: 'INV-2026-009' })).status).toBe(409); // записи уже в счёте
+      expect((await make({ lines: [] })).status).toBe(400);
+      expect((await make({ entryIds: [] })).json.invoice.number).toBe('INV-2026-002'); // следующий номер выдаётся сам
+
+      const id = inv.json.invoice.id as string;
+      const sent = await call('PUT', `/api/invoices/${id}`, { status: 'sent' });
+      expect(sent.json.invoices.find((v: any) => v.id === id)).toMatchObject({ status: 'sent' });
+      const paid = await call('PUT', `/api/invoices/${id}`, { status: 'paid' });
+      expect(paid.json.invoices.find((v: any) => v.id === id).paidAt).not.toBeNull();
+      expect((await call('PUT', `/api/invoices/${id}`, { status: 'weird' })).status).toBe(400);
+
+      const del = await call('DELETE', `/api/invoices/${id}`);
+      expect(del.json.entries[0].invoiceId).toBeNull(); // время снова можно выставить
+      expect(del.json.invoices.some((v: any) => v.id === id)).toBe(false);
+    } finally {
+      await new Promise<void>((r) => server.close(() => r()));
+    }
+  });
+});
+
+describe('повтор запросов после обрыва связи', () => {
+  it('старт, стоп и ручная запись с id применяются один раз и берут время нажатия', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'idem-'));
+    const store = new Store(join(dir, 'tracker.json'));
+    const server = createApp(store).listen(0);
+    await new Promise((r) => server.once('listening', r));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const post = async (p: string, body: unknown) => (await (await fetch(base + p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json()) as State;
+    try {
+      const at = new Date(Date.now() - 3600_000).toISOString();
+      await post('/api/timer/start', { id: 'offline-1', at, description: 'A' });
+      const again = await post('/api/timer/start', { id: 'offline-1', at, description: 'A' });
+      expect(again.entries).toHaveLength(1);
+      expect(again.entries[0].start).toBe(at);
+
+      const stopAt = new Date(Date.now() - 1800_000).toISOString();
+      const stopped = await post('/api/timer/stop', { id: 'offline-1', at: stopAt });
+      expect(stopped.entries[0].end).toBe(stopAt);
+      // повторный стоп того же id ничего не меняет, даже с другим временем
+      expect((await post('/api/timer/stop', { id: 'offline-1', at: new Date().toISOString() })).entries[0].end).toBe(stopAt);
+
+      const manual = { id: 'manual-0001', description: 'M', start: '2026-10-01T08:00:00.000Z', end: '2026-10-01T09:00:00.000Z' };
+      await post('/api/entries', manual);
+      expect((await post('/api/entries', manual)).entries.filter((e) => e.id === 'manual-0001')).toHaveLength(1);
+
+      // время из будущего (сбитые часы) обрезается до «сейчас»
+      const future = await post('/api/timer/start', { id: 'future-0001', at: new Date(Date.now() + 86400_000).toISOString() });
+      expect(Date.parse(future.entries.find((e) => e.id === 'future-0001')!.start)).toBeLessThanOrEqual(Date.now());
+    } finally {
+      await new Promise<void>((r) => server.close(() => r()));
+    }
+  });
+});

@@ -1,4 +1,4 @@
-import { buildReport, type ReportQuery } from './report.js';
+import { buildReport, entrySeconds, filterEntries, type ReportQuery } from './report.js';
 import type { State } from './types.js';
 
 export type Lang = 'ru' | 'en';
@@ -91,4 +91,101 @@ export function formatInvoiceDate(day: string, lang: Lang): string {
 
 export function formatInvoiceHours(hours: number, lang: Lang): string {
   return hours.toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/* ---------------- invoices built from entries ---------------- */
+
+/** How tracked time is rounded before it is billed: up to the next 15 / 30 / 60 minutes, or not at all. */
+export type Rounding = 'none' | '15' | '30' | '60';
+
+export function roundSeconds(seconds: number, rounding: Rounding): number {
+  if (rounding === 'none') return seconds;
+  const step = Number(rounding) * 60;
+  return Math.ceil(seconds / step) * step;
+}
+
+export interface Totals {
+  subtotal: number;
+  discount: number;
+  tax: number;
+  total: number;
+}
+
+/** Subtotal, then discount on it, then tax on what is left: the order printed on the paper. */
+export function computeTotals(lines: Array<{ amount: number }>, discountPct: number, taxPct: number): Totals {
+  const subtotal = invoiceTotal(lines);
+  const discount = round2((subtotal * Math.max(0, Math.min(100, discountPct))) / 100);
+  const taxable = round2(subtotal - discount);
+  const tax = round2((taxable * Math.max(0, Math.min(100, taxPct))) / 100);
+  return { subtotal, discount, tax, total: round2(taxable + tax) };
+}
+
+export interface BillableLine {
+  key: string;
+  projectId: string;
+  projectName: string;
+  description: string;
+  seconds: number;
+  entryIds: string[];
+  rate: number;
+  hours: number;
+  amount: number;
+}
+
+/**
+ * Billable, not yet invoiced work of the given projects in the period, one line per
+ * project + task text. `skipInvoiced: false` also brings back entries already on an invoice.
+ */
+export function collectBillableLines(
+  state: State,
+  query: ReportQuery,
+  projectIds: string[],
+  nowMs: number,
+  rounding: Rounding,
+  skipInvoiced = true
+): BillableLine[] {
+  const ids = new Set(projectIds);
+  const byKey = new Map<string, BillableLine>();
+  for (const e of filterEntries(state, { ...query, projectId: null, billable: true })) {
+    if (!e.projectId || !ids.has(e.projectId) || (skipInvoiced && e.invoiceId)) continue;
+    const project = state.projects.find((p) => p.id === e.projectId);
+    if (!project) continue;
+    const description = e.description.trim();
+    const key = `${e.projectId}|${description}`;
+    const line =
+      byKey.get(key) ??
+      ({ key, projectId: project.id, projectName: project.name, description, seconds: 0, entryIds: [], rate: project.rate, hours: 0, amount: 0 } as BillableLine);
+    line.seconds += entrySeconds(e, nowMs);
+    line.entryIds.push(e.id);
+    byKey.set(key, line);
+  }
+  return [...byKey.values()]
+    .map((l) => {
+      const { hours, amount } = lineAmount(roundSeconds(l.seconds, rounding), l.rate);
+      return { ...l, hours, amount };
+    })
+    .filter((l) => l.hours > 0) // a few seconds round to 0.00 h: nothing to bill
+    .sort((a, b) => a.projectName.localeCompare(b.projectName) || a.description.localeCompare(b.description));
+}
+
+/** Number of entries in the period that are billable but already on an invoice. */
+export function countInvoiced(state: State, query: ReportQuery, projectIds: string[]): number {
+  const ids = new Set(projectIds);
+  return filterEntries(state, { ...query, projectId: null, billable: true }).filter((e) => e.projectId && ids.has(e.projectId) && e.invoiceId).length;
+}
+
+/** Next free INV-YYYY-NNN: one more than the highest used this year, so numbers never repeat or skip back. */
+export function nextInvoiceNumber(existing: string[], year: number): string {
+  let max = 0;
+  for (const n of existing) {
+    const next = nextCounterAfter(n, year);
+    if (next !== null) max = Math.max(max, next - 1);
+  }
+  return formatInvoiceNumber(year, max + 1);
+}
+
+/** "Overdue" is derived: sent and past the due date. */
+export type InvoiceDisplayStatus = 'draft' | 'sent' | 'overdue' | 'paid';
+export function displayStatus(inv: { status: 'draft' | 'sent' | 'paid'; dueDate: string }, today: string): InvoiceDisplayStatus {
+  return inv.status === 'sent' && inv.dueDate < today ? 'overdue' : inv.status;
 }

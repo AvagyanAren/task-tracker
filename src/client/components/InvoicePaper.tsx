@@ -1,5 +1,5 @@
 import { formatInvoiceDate, formatInvoiceHours, formatInvoiceMoney, type Lang } from '../../shared/invoice.js';
-import type { Party } from '../invoiceProfile.js';
+import type { Party } from '../../shared/types.js';
 
 export interface InvoiceDoc {
   lang: Lang;
@@ -12,9 +12,14 @@ export interface InvoiceDoc {
   color: string;
   currency: string;
   sender: Party & { payment: string };
-  client: Party;
+  client: Party & { taxId?: string };
   lines: Array<{ key: string; description: string; hours: number; rate: number; amount: number }>;
   totalHours: number;
+  subtotal: number;
+  discountPct: number;
+  discount: number;
+  taxPct: number;
+  tax: number;
   total: number;
   notes: string;
 }
@@ -34,6 +39,10 @@ const T = {
     rate: 'Ставка / ч',
     amount: 'Сумма',
     totalHours: 'Всего часов',
+    subtotal: 'Сумма',
+    discount: 'Скидка',
+    tax: 'Налог',
+    taxId: 'ИНН',
     totalDue: 'К оплате',
     payment: 'Реквизиты для оплаты',
     notes: 'Примечания',
@@ -55,6 +64,10 @@ const T = {
     rate: 'Rate / hr',
     amount: 'Amount',
     totalHours: 'Total hours',
+    subtotal: 'Subtotal',
+    discount: 'Discount',
+    tax: 'Tax',
+    taxId: 'Tax ID',
     totalDue: 'Total due',
     payment: 'Payment details',
     notes: 'Notes',
@@ -64,12 +77,17 @@ const T = {
   }
 } as const;
 
-function PartyBlock({ party, fallback }: { party: Party; fallback: string }) {
+function PartyBlock({ party, fallback, taxLabel }: { party: Party & { taxId?: string }; fallback: string; taxLabel: string }) {
   return (
     <div className="inv-party">
       <strong>{party.name || fallback}</strong>
       {party.address && <span className="inv-lines">{party.address}</span>}
       {party.email && <span>{party.email}</span>}
+      {party.taxId && (
+        <span>
+          {taxLabel}: {party.taxId}
+        </span>
+      )}
     </div>
   );
 }
@@ -115,11 +133,11 @@ export function InvoicePaper({ doc }: { doc: InvoiceDoc }) {
       <section className="inv-parties">
         <div>
           <h4>{t.from}</h4>
-          <PartyBlock party={doc.sender} fallback="—" />
+          <PartyBlock party={doc.sender} fallback="—" taxLabel={t.taxId} />
         </div>
         <div>
           <h4>{t.billTo}</h4>
-          <PartyBlock party={doc.client} fallback="—" />
+          <PartyBlock party={doc.client} fallback="—" taxLabel={t.taxId} />
         </div>
       </section>
 
@@ -156,6 +174,30 @@ export function InvoicePaper({ doc }: { doc: InvoiceDoc }) {
           <span>{t.totalHours}</span>
           <strong>{formatInvoiceHours(doc.totalHours, doc.lang)}</strong>
         </div>
+        {(doc.discount > 0 || doc.tax > 0) && (
+          <>
+            <div className="inv-total-row">
+              <span>{t.subtotal}</span>
+              <strong>{money(doc.subtotal)}</strong>
+            </div>
+            {doc.discount > 0 && (
+              <div className="inv-total-row">
+                <span>
+                  {t.discount} {doc.discountPct}%
+                </span>
+                <strong>−{money(doc.discount)}</strong>
+              </div>
+            )}
+            {doc.tax > 0 && (
+              <div className="inv-total-row">
+                <span>
+                  {t.tax} {doc.taxPct}%
+                </span>
+                <strong>{money(doc.tax)}</strong>
+              </div>
+            )}
+          </>
+        )}
         <div className="inv-total-due">
           <span>{t.totalDue}</span>
           <strong>{money(doc.total)}</strong>

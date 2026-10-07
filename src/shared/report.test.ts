@@ -1,9 +1,11 @@
+import { blank } from './blank.js';
 import { describe, expect, it } from 'vitest';
 import { buildReport, dayRangeToQuery, entrySeconds, presetRange } from './report.js';
 import type { State } from './types.js';
 
 const TZ = 240; // UTC+4
 const state: State = {
+  ...blank(),
   projects: [
     { id: 'p1', name: 'SFIT', rate: 25, currency: '$', color: '#fff', archived: false, createdAt: '' },
     { id: 'p2', name: 'Aviator', rate: 1000, currency: '₽', color: '#fff', archived: false, createdAt: '' }
@@ -93,6 +95,7 @@ describe('периоды', () => {
 
 describe('billable, теги и фильтры', () => {
   const st: State = {
+    ...blank(),
     projects: [{ id: 'p', name: 'P', rate: 100, currency: '$', color: '#fff', archived: false, createdAt: '' }],
     entries: [
       { id: '1', description: 'Дизайн экрана', projectId: 'p', tags: ['ui'], billable: true, start: '2026-09-22T08:00:00.000Z', end: '2026-09-22T10:00:00.000Z' },

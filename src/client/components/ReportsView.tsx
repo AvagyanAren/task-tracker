@@ -1,3 +1,4 @@
+import { DateField } from './fields.js';
 import { useMemo, useState } from 'react';
 import { buildReport, dayRangeToQuery, entrySeconds, filterEntries, presetRange, type Preset, type ReportQuery } from '../../shared/report.js';
 import { addDays, dayKey, formatHM, hoursDecimal, isoToLocalTime } from '../../shared/time.js';
@@ -19,6 +20,20 @@ const PRESETS: Array<[Preset, string]> = [
   ['year', 'Год'],
   ['all', 'Всё время']
 ];
+
+const sumMoney = (m: Record<string, number>) => Object.values(m).reduce((a, b) => a + b, 0);
+
+/** "▲ 12 % к прошлому периоду". Hidden when there is nothing to compare with. */
+function Delta({ now, before, onAccent, single = true }: { now: number; before: number; onAccent?: boolean; single?: boolean }) {
+  if (!single || before <= 0) return null;
+  const pct = Math.round(((now - before) / before) * 100);
+  const dir = pct === 0 ? 'flat' : pct > 0 ? 'up' : 'down';
+  return (
+    <span className={`delta delta-${dir} ${onAccent ? 'on-accent' : ''}`} title="Сравнение с предыдущим периодом такой же длины">
+      {dir === 'up' ? '▲' : dir === 'down' ? '▼' : '='} {Math.abs(pct)}% к прошлому периоду
+    </span>
+  );
+}
 
 const csvCell = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
 type Mode = 'summary' | 'detailed';
@@ -58,6 +73,20 @@ export function ReportsView() {
   );
 
   const report = useMemo(() => buildReport(state, query, now, tz), [state, query, now, tz]);
+  // The period of the same length right before this one, with the same filters, for "+12 %" hints.
+  const prev = useMemo(() => {
+    if (preset === 'all') return null;
+    const last = toDay < fromDay ? fromDay : toDay;
+    const n = Math.round((Date.parse(last) - Date.parse(fromDay)) / 86400000) + 1;
+    return buildReport(state, { ...query, ...dayRangeToQuery(addDays(fromDay, -n), addDays(fromDay, -1), tz) }, now, tz);
+  }, [preset, state, query, fromDay, toDay, now, tz]);
+  const filtersOn = projectId !== null || tags.length > 0 || bill !== 'all' || search.trim() !== '';
+  const resetFilters = () => {
+    setProjectId(null);
+    setTags([]);
+    setBill('all');
+    setSearch('');
+  };
   const projects = useMemo(() => new Map(state.projects.map((p) => [p.id, p])), [state.projects]);
   const knownTags = useMemo(() => [...new Set(state.entries.flatMap((e) => e.tags))], [state.entries]);
   const detailed = useMemo(
@@ -113,8 +142,8 @@ export function ReportsView() {
             value={mode}
             onChange={setMode}
             options={[
-              { value: 'summary', label: 'Summary' },
-              { value: 'detailed', label: 'Detailed' }
+              { value: 'summary', label: 'Сводный' },
+              { value: 'detailed', label: 'Подробный' }
             ]}
           />
           <button className="btn subtle" onClick={exportCsv} disabled={report.entryCount === 0}>
@@ -137,11 +166,11 @@ export function ReportsView() {
         <div className="filter-row">
           <label className="field">
             <span>С</span>
-            <input type="date" value={fromDay} onChange={(e) => { setPreset('custom'); setFromDay(e.target.value); }} />
+            <DateField value={fromDay} onChange={(d) => { setPreset('custom'); setFromDay(d); }} />
           </label>
           <label className="field">
             <span>По (включительно)</span>
-            <input type="date" value={toDay} onChange={(e) => { setPreset('custom'); setToDay(e.target.value); }} />
+            <DateField value={toDay} onChange={(d) => { setPreset('custom'); setToDay(d); }} />
           </label>
           <div className="field">
             <span>Проект</span>
@@ -171,6 +200,11 @@ export function ReportsView() {
               <input placeholder="Текст в описании" value={search} onChange={(e) => setSearch(e.target.value)} />
             </span>
           </label>
+          {filtersOn && (
+            <button className="btn ghost sm" onClick={resetFilters}>
+              Сбросить
+            </button>
+          )}
         </div>
       </section>
 
@@ -179,6 +213,7 @@ export function ReportsView() {
           <span className="stat-label">Всего времени</span>
           <strong className="stat-value">{formatHM(report.totalSeconds)}</strong>
           <span className="muted">{hoursDecimal(report.totalSeconds)} ч · записей {report.entryCount}</span>
+          {prev && <Delta now={report.totalSeconds} before={prev.totalSeconds} />}
         </div>
         <div className="stat">
           <span className="stat-label">Оплачиваемое</span>
@@ -186,6 +221,7 @@ export function ReportsView() {
           <span className="muted">
             {report.totalSeconds ? Math.round((report.billableSeconds / report.totalSeconds) * 100) : 0}% от всего времени
           </span>
+          {prev && <Delta now={report.billableSeconds} before={prev.billableSeconds} />}
         </div>
         {pomodoros > 0 && (
           <div className="stat">
@@ -198,6 +234,7 @@ export function ReportsView() {
           <span className="stat-label">К оплате</span>
           <strong className="stat-value">{formatMoneyMap(report.amountByCurrency)}</strong>
           <span>часы × ставка проекта</span>
+          {prev && <Delta now={sumMoney(report.amountByCurrency)} before={sumMoney(prev.amountByCurrency)} onAccent single={Object.keys({ ...report.amountByCurrency, ...prev.amountByCurrency }).length <= 1} />}
         </div>
       </div>
 

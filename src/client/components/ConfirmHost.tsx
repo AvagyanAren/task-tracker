@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { registerConfirmHost, type ConfirmRequest } from '../confirm.js';
 import { Trash } from '../icons.js';
+import { useFocusTrap } from '../ui.js';
 
 /** Mount once: renders the confirmation modal requested via confirmDialog(). */
 export function ConfirmHost() {
   const [req, setReq] = useState<ConfirmRequest | null>(null);
   const okRef = useRef<HTMLButtonElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(boxRef, req !== null);
 
   useEffect(() => {
     registerConfirmHost(setReq);
@@ -30,7 +33,7 @@ export function ConfirmHost() {
   if (!req) return null;
   return (
     <div className="overlay confirm-overlay" onMouseDown={(e) => e.target === e.currentTarget && close(false)}>
-      <div className="dialog confirm" role="alertdialog" aria-modal="true" aria-label={req.title}>
+      <div ref={boxRef} className="dialog confirm" role="alertdialog" aria-modal="true" aria-label={req.title}>
         {req.danger && (
           <span className="confirm-icon">
             <Trash size={20} />

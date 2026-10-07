@@ -11,7 +11,7 @@ import type { PomoApi } from '../usePomodoro.js';
 
 /** Full-screen view with nothing but the running timer. Esc closes it. */
 export function FocusMode({ pomo, onClose }: { pomo: PomoApi; onClose: () => void }) {
-  const { state, now, run } = useApp();
+  const { state, now, stopTimer } = useApp();
   const running = state.entries.find((e) => e.end === null);
   const project = state.projects.find((p) => p.id === running?.projectId);
 
@@ -41,7 +41,7 @@ export function FocusMode({ pomo, onClose }: { pomo: PomoApi; onClose: () => voi
         <h1>{running.description || 'Без названия'}</h1>
         <div className="focus-clock">{formatClock(entrySeconds(running, now))}</div>
         {pomo.session?.phase === 'work' && <div className="focus-pomo">🍅 до перерыва {formatCountdown(pomo.remaining)}</div>}
-        <button className="btn stop big" onClick={() => run(() => api.stopTimer())}>
+        <button className="btn stop big" onClick={() => stopTimer()}>
           <Square size={20} solid /> Остановить
         </button>
         <AmbientMixer />

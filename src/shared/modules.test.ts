@@ -1,3 +1,4 @@
+import { blank } from './blank.js';
 import { describe, expect, it } from 'vitest';
 import { advance, DEFAULT_POMODORO, formatCountdown, phaseEnd, remainingMs, startSession, type PomodoroSession } from './pomodoro.js';
 import { onUserState, promptApplies } from './idle.js';
@@ -125,6 +126,7 @@ describe('календарь', () => {
 describe('timesheet', () => {
   const days = weekDays('2026-09-21');
   const state: State = {
+    ...blank(),
     projects: [],
     entries: [
       e('1', '2026-09-22T08:00:00Z', '2026-09-22T10:00:00Z', { description: 'Mobile' }),

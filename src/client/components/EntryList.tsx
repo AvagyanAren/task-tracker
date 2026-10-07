@@ -1,4 +1,3 @@
-import { confirmDialog } from '../confirm.js';
 import { useMemo, useState } from 'react';
 import type { Entry } from '../../shared/types.js';
 import { entrySeconds } from '../../shared/report.js';
@@ -14,7 +13,7 @@ import { EntryDialog } from './EntryDialog.js';
 const PAGE_DAYS = 10;
 
 export function EntryList() {
-  const { state, now, tz, run, settings } = useApp();
+  const { state, now, tz, run, deleteEntry, startTimer, settings } = useApp();
   const today = dayKey(now, tz);
   const yesterday = addDays(today, -1);
   const [visibleDays, setVisibleDays] = useState(PAGE_DAYS);
@@ -75,13 +74,13 @@ export function EntryList() {
         </span>
         <span className="entry-dur">{e.end ? formatClock(entrySeconds(e, now)) : 'идёт'}</span>
         <span className="entry-actions">
-          <button className="btn icon ghost" title="Продолжить" onClick={() => run(() => api.startTimer(e.description, e.projectId, e.tags, e.billable))}>
+          <button className="btn icon ghost" title="Продолжить" onClick={() => startTimer(e.description, e.projectId, e.tags, e.billable)}>
             <Play size={15} solid />
           </button>
           <button className="btn icon ghost" title="Править" onClick={() => setDialog({ entry: e })}>
             <Pencil size={15} />
           </button>
-          <button className="btn icon ghost danger" title="Удалить" onClick={async () => (await confirmDialog({ title: 'Удалить запись?', text: 'Это действие нельзя отменить.', confirmLabel: 'Удалить', danger: true })) && run(() => api.deleteEntry(e.id))}>
+          <button className="btn icon ghost danger" title="Удалить" onClick={() => deleteEntry(e.id)}>
             <Trash size={15} />
           </button>
         </span>
@@ -145,7 +144,7 @@ export function EntryList() {
                     <span className="entry-time">{g.entries.length} записей</span>
                     <span className="entry-dur">{formatClock(sec)}</span>
                     <span className="entry-actions">
-                      <button className="btn icon ghost" title="Продолжить" onClick={() => run(() => api.startTimer(first.description, first.projectId, first.tags, first.billable))}>
+                      <button className="btn icon ghost" title="Продолжить" onClick={() => startTimer(first.description, first.projectId, first.tags, first.billable)}>
                         <Play size={15} solid />
                       </button>
                     </span>

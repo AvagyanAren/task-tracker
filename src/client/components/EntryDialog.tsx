@@ -1,3 +1,4 @@
+import { DateField, Select, TimeField } from './fields.js';
 import { useMemo, useState } from 'react';
 import type { Entry } from '../../shared/types.js';
 import { dayKey, formatClock, isoToLocalTime, localToIso, parseDuration } from '../../shared/time.js';
@@ -84,11 +85,11 @@ export function EntryDialog({ entry, prefill, onClose }: Props) {
         <div className="grid2">
           <label>
             <span>Начало</span>
-            <input type="date" value={startDay} onChange={(e) => setStartDay(e.target.value)} />
+            <DateField value={startDay} onChange={setStartDay} />
           </label>
           <label>
             <span>Время</span>
-            <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+            <TimeField value={startTime} onChange={setStartTime} />
           </label>
         </div>
 
@@ -97,11 +98,11 @@ export function EntryDialog({ entry, prefill, onClose }: Props) {
             <div className="grid2">
               <label>
                 <span>Конец</span>
-                <input type="date" value={endDay} onChange={(e) => setEndDay(e.target.value)} />
+                <DateField value={endDay} onChange={setEndDay} />
               </label>
               <label>
                 <span>Время</span>
-                <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                <TimeField value={endTime} onChange={setEndTime} />
               </label>
             </div>
             <label>

@@ -22,8 +22,8 @@ export function AmbientMixer() {
     <Popover
       align="right"
       trigger={(open, toggle) => (
-        <button className={a.enabled ? 'tool on' : 'tool'} onClick={toggle} aria-expanded={open} title="Фоновые звуки">
-          <Music size={17} />
+        <button className={a.enabled ? 'tool on' : 'tool'} onClick={toggle} aria-expanded={open} title="Фоновые звуки" aria-label="Фоновые звуки">
+          <Music size={16} /> <span className="tool-label">Звук</span>
         </button>
       )}
     >
