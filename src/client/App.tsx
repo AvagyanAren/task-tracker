@@ -29,11 +29,13 @@ const NAV: Array<{ tab: Tab; label: string; icon: React.ReactNode }> = [
 
 export default function App() {
   const [state, setState] = useState<State | null>(null);
-  const [tab, setTab] = useState<Tab>('timer');
+  // Deep links such as /#reports or /#settings open that screen straight away.
+  const hash = typeof location === 'undefined' ? '' : location.hash.replace('#', '');
+  const [tab, setTab] = useState<Tab>((NAV.some((n) => n.tab === hash.split('+')[0]) ? hash.split('+')[0] : 'timer') as Tab);
   const [now, setNow] = useState(Date.now());
   const [toast, setToast] = useState<{ text: string; error: boolean } | null>(null);
   const [settings, setSettings] = useSettings();
-  const [dialog, setDialog] = useState<'settings' | 'help' | null>(null);
+  const [dialog, setDialog] = useState<'settings' | 'help' | null>(hash.includes('settings') ? 'settings' : hash.includes('help') ? 'help' : null);
   const [focus, setFocus] = useState(false);
   const [idle, setIdle] = useState<IdleInfo | null>(null);
   const tz = tzOffset();
@@ -176,7 +178,7 @@ export default function App() {
               <button key={n.tab} className={tab === n.tab ? 'nav-item active' : 'nav-item'} onClick={() => setTab(n.tab)}>
                 {n.icon}
                 <span>{n.label}</span>
-                {n.tab === 'timer' && isRunning && <i className="live" aria-label="Идёт таймер" />}
+                {n.tab === 'timer' && isRunning && <i className="nav-live" aria-label="Идёт таймер" />}
               </button>
             ))}
           </nav>

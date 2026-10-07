@@ -70,18 +70,18 @@ export function CalendarView() {
         <span className="muted">За неделю: <strong>{formatHM(weekTotal)}</strong></span>
       </div>
 
-      <div className="cal-head">
-        <div className="cal-gutter" />
-        {columns.map((c, i) => (
-          <div key={c.day} className={c.day === today ? 'cal-dayhead today' : 'cal-dayhead'}>
-            <span>{WD[i]}</span>
-            <strong>{Number(c.day.slice(8))}</strong>
-            <em>{c.seconds ? formatHM(c.seconds) : ''}</em>
-          </div>
-        ))}
-      </div>
 
       <div className="cal-scroll" ref={scroller} onMouseUp={finishDrag} onMouseLeave={() => drag && finishDrag()}>
+        <div className="cal-head">
+          <div className="cal-gutter" />
+          {columns.map((c, i) => (
+            <div key={c.day} className={c.day === today ? 'cal-dayhead today' : 'cal-dayhead'}>
+              <span>{WD[i]}</span>
+              <strong>{Number(c.day.slice(8))}</strong>
+              <em>{c.seconds ? formatHM(c.seconds) : ''}</em>
+            </div>
+          ))}
+        </div>
         <div className="cal-grid" style={{ height: 24 * HOUR_PX }}>
           <div className="cal-gutter">
             {HOURS.map((h) => (

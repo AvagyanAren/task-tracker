@@ -111,10 +111,68 @@ export function Kbd({ children }: { children: ReactNode }) {
   return <kbd className="kbd">{children}</kbd>;
 }
 
-export function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+/** One line of a settings list: title (+ optional hint) on the left, the control on the right. */
+export function SettingRow({ title, hint, children }: { title: string; hint?: ReactNode; children: ReactNode }) {
   return (
-    <label className="switch-row">
+    <div className="srow">
+      <div className="srow-text">
+        <strong>{title}</strong>
+        {hint && <span>{hint}</span>}
+      </div>
+      <div className="srow-control">{children}</div>
+    </div>
+  );
+}
+
+/** Number input with a unit inside the field ("25 мин"). */
+export function NumberField({
+  label,
+  value,
+  unit,
+  min,
+  max,
+  onChange
+}: {
+  label?: string;
+  value: number;
+  unit?: string;
+  min: number;
+  max: number;
+  onChange: (n: number) => void;
+}) {
+  const field = (
+    <span className="nfield">
+      <input
+        type="number"
+        min={min}
+        max={max}
+        value={value}
+        aria-label={label}
+        onChange={(e) => {
+          const n = Math.round(Number(e.target.value));
+          if (Number.isFinite(n)) onChange(Math.min(max, Math.max(min, n)));
+        }}
+      />
+      {unit && <em>{unit}</em>}
+    </span>
+  );
+  return label ? (
+    <label className="field">
       <span>{label}</span>
+      {field}
+    </label>
+  ) : (
+    field
+  );
+}
+
+export function Switch({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
+  return (
+    <label className="switch-row srow">
+      <span className="srow-text">
+        <strong>{label}</strong>
+        {hint && <span>{hint}</span>}
+      </span>
       <input type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} />
       <span className="switch" aria-hidden="true" />
     </label>

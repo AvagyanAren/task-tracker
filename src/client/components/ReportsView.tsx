@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { buildReport, dayRangeToQuery, entrySeconds, filterEntries, presetRange, type Preset, type ReportQuery } from '../../shared/report.js';
-import { dayKey, formatHM, hoursDecimal, isoToLocalTime } from '../../shared/time.js';
+import { addDays, dayKey, formatHM, hoursDecimal, isoToLocalTime } from '../../shared/time.js';
 import { useApp } from '../ctx.js';
 import { pomodoroDays } from '../usePomodoro.js';
 import { formatMoney, formatMoneyMap } from '../format.js';
@@ -24,10 +24,13 @@ const csvCell = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
 type Mode = 'summary' | 'detailed';
 type BillFilter = 'all' | 'yes' | 'no';
 
+/** /#reports+detailed opens the Detailed report straight away. */
+const initialModeFromHash = (): Mode => (typeof location !== 'undefined' && location.hash.includes('detailed') ? 'detailed' : 'summary');
+
 export function ReportsView() {
   const { state, now, tz, settings } = useApp();
   const initial = presetRange('week', now, tz);
-  const [mode, setMode] = useState<Mode>('summary');
+  const [mode, setMode] = useState<Mode>(initialModeFromHash());
   const [preset, setPreset] = useState<Preset | 'custom'>('week');
   const [fromDay, setFromDay] = useState(initial.fromDay);
   const [toDay, setToDay] = useState(initial.toDay);
@@ -35,8 +38,7 @@ export function ReportsView() {
   const [tags, setTags] = useState<string[]>([]);
   const [bill, setBill] = useState<BillFilter>('all');
   const [search, setSearch] = useState('');
-  const [invoiceOpen, setInvoiceOpen] = useState(false);
-
+  const [invoiceOpen, setInvoiceOpen] = useState(typeof location !== 'undefined' && location.hash.includes('invoice'));
   const pick = (p: Preset) => {
     const r = presetRange(p, now, tz);
     setPreset(p);
@@ -204,7 +206,7 @@ export function ReportsView() {
           Выберите другой период или сбросьте фильтры.
         </Empty>
       ) : mode === 'summary' ? (
-        <Summary report={report} />
+        <Summary report={report} fromDay={fromDay} toDay={toDay < fromDay ? fromDay : toDay} />
       ) : (
         <section className="panel flush">
           <table className="table">
@@ -250,10 +252,14 @@ export function ReportsView() {
   );
 }
 
-function Summary({ report }: { report: ReturnType<typeof buildReport> }) {
+function Summary({ report, fromDay, toDay }: { report: ReturnType<typeof buildReport>; fromDay: string; toDay: string }) {
   const { state } = useApp();
   const colorOf = (id: string | null) => (id ? state.projects.find((p) => p.id === id)?.color : undefined) ?? '#9aa0b4';
-  const days = [...report.byDay].sort((a, b) => (a.day < b.day ? -1 : 1));
+  // Show every day of a short period (empty ones too) so the bars keep a sensible width and rhythm.
+  const known = new Map(report.byDay.map((d) => [d.day, d.seconds]));
+  let days: Array<{ day: string; seconds: number }> = [...report.byDay].sort((a, b) => (a.day < b.day ? -1 : 1));
+  const span = Math.round((Date.parse(toDay) - Date.parse(fromDay)) / 86_400_000) + 1;
+  if (span >= 1 && span <= 62) days = Array.from({ length: span }, (_, i) => { const d = addDays(fromDay, i); return { day: d, seconds: known.get(d) ?? 0 }; });
   return (
     <>
       <div className="charts">
@@ -346,8 +352,8 @@ function BarChart({ days }: { days: Array<{ day: string; seconds: number }> }) {
       ))}
       {days.map((d, i) => {
         const h = d.seconds / 3600;
-        const x = pad.l + i * bw + bw * 0.18;
-        const w = bw * 0.64;
+        const w = Math.min(bw * 0.62, 44);
+        const x = pad.l + i * bw + (bw - w) / 2;
         return (
           <g key={d.day}>
             <rect x={x} y={y(h)} width={w} height={Math.max(0, H - pad.b - y(h))} rx={Math.min(6, w / 2)} className="bar">
