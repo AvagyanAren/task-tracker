@@ -862,3 +862,17 @@ input:hover:not(:focus):not(:disabled), textarea:hover:not(:focus):not(:disabled
   .task-layout { grid-template-columns: 1fr; gap: 20px; }
   .task-title-input { font-size: 19px; }
 }
+
+/* ---------- Context menu ---------- */
+.ctx { position: fixed; z-index: 100; min-width: 220px; max-width: 280px; padding: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-lg); animation: pop 0.1s ease-out; }
+.ctx-item { display: flex; align-items: center; gap: 10px; width: 100%; height: var(--h-sm); padding: 0 10px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text); font: inherit; font-size: var(--fs-md); font-weight: 600; text-align: left; cursor: pointer; }
+.ctx-item:hover:not(:disabled), .ctx-item:focus-visible { background: var(--surface-3); outline: none; }
+.ctx-item.danger { color: var(--danger); }
+.ctx-item.danger:hover:not(:disabled), .ctx-item.danger:focus-visible { background: var(--danger-soft); }
+.ctx-item:disabled { opacity: 0.4; cursor: not-allowed; }
+.ctx-icon { display: inline-flex; width: 16px; color: var(--text-3); }
+.ctx-item.danger .ctx-icon { color: inherit; }
+.ctx-text { flex: 1; }
+.ctx-check { color: var(--accent); }
+.ctx-sep { height: 1px; margin: 5px 4px; background: var(--border); }
+.ctx-label { padding: 6px 10px 2px; font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); }

@@ -8,6 +8,7 @@ import { useApp } from '../ctx.js';
 import { Check, CheckList, ChevronDown, Clock, Comment, Copy, Flag, Kanban, Pencil, Play, Plus, Square, Tag, Trash, X } from '../icons.js';
 import { optMoveTask } from '../optimistic.js';
 import { Dialog, Empty, ProjectDot, Segmented } from '../ui.js';
+import { ContextMenu, type MenuItem } from './ContextMenu.js';
 import { DateField, formatDayRu, Select } from './fields.js';
 import { ProjectPicker } from './ProjectPicker.js';
 import { TagPicker } from './TagPicker.js';
@@ -53,6 +54,7 @@ export function TasksView() {
   const [creating, setCreating] = useState(false);
   const [query, setQuery] = useState('');
   const [adding, setAdding] = useState<string | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
   const [drag, setDrag] = useState<{ id: string; col: string; index: number } | null>(null);
   const time = useTaskTime();
   const today = dayKey(now, tz);
@@ -113,6 +115,32 @@ export function TasksView() {
     void run(() => api.moveTask(id, col, index), optMoveTask(id, col, index));
   };
 
+  const cardMenu = (t: Task): MenuItem[] => {
+    const isRunning = running?.taskId === t.id;
+    return [
+      { label: 'Открыть', icon: <Kanban size={15} />, onClick: () => setOpenId(t.id) },
+      { label: isRunning ? 'Остановить таймер' : 'Запустить таймер', icon: isRunning ? <Square size={14} solid /> : <Play size={14} solid />, onClick: () => toggleTimer(t) },
+      { label: t.completed ? 'Снять отметку «выполнена»' : 'Отметить выполненной', icon: <Check size={15} />, onClick: () => void run(() => api.updateTask(t.id, { completed: !t.completed })) },
+      { kind: 'sep' },
+      { kind: 'label', label: 'Переместить в' },
+      ...board.columns.map((c): MenuItem => ({ label: c.name, checked: c.id === t.columnId, disabled: c.id === t.columnId, onClick: () => void run(() => api.moveTask(t.id, c.id), optMoveTask(t.id, c.id, Number.MAX_SAFE_INTEGER)) })),
+      { kind: 'sep' },
+      { kind: 'label', label: 'Приоритет' },
+      ...(Object.keys(PRIORITY_LABEL) as Priority[]).map((p): MenuItem => ({ label: PRIORITY_LABEL[p], checked: t.priority === p, onClick: () => void run(() => api.updateTask(t.id, { priority: p })) })),
+      { kind: 'sep' },
+      { label: 'Создать копию', icon: <Copy size={15} />, onClick: () => void run(async () => (await api.duplicateTask(t.id)).state) },
+      {
+        label: 'Удалить',
+        icon: <Trash size={15} />,
+        danger: true,
+        onClick: async () => {
+          const ok = await confirmDialog({ title: 'Удалить задачу?', text: 'Записи времени останутся в истории, но перестанут быть связаны с карточкой.', confirmLabel: 'Удалить', danger: true });
+          if (ok) void run(() => api.deleteTask(t.id));
+        }
+      }
+    ];
+  };
+
   const renderCard = (t: Task, col: string) => {
     const p = project(t.projectId);
     const done = col === lastColumn;
@@ -135,6 +163,11 @@ export function TasksView() {
         }}
         onDragEnd={() => setDrag(null)}
         onClick={() => setOpenId(t.id)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setMenu({ x: e.clientX, y: e.clientY, items: cardMenu(t) });
+        }}
         onKeyDown={(e) => {
           if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault();
@@ -250,7 +283,7 @@ export function TasksView() {
           }
           if (here && drag!.index >= others) items.push(<div key="ph" className="drop-line" />);
           return (
-            <section key={col.id} role="listitem" className={`kcol ${drag?.col === col.id ? 'over' : ''}`} aria-label={col.name} onDragOver={(e) => onDragOver(e, col.id)} onDrop={onDrop}>
+            <section key={col.id} role="listitem" className={`kcol ${drag?.col === col.id ? 'over' : ''}`} aria-label={col.name} onDragOver={(e) => onDragOver(e, col.id)} onDrop={onDrop} onContextMenu={(e) => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, items: [{ label: 'Добавить карточку', icon: <Plus size={15} />, onClick: () => setAdding(col.id) }] }); }}>
               <header className="kcol-head">
                 <h3>{col.name}</h3>
                 <span className="count">{list.length}</span>
@@ -277,6 +310,7 @@ export function TasksView() {
         </Empty>
       )}
 
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={() => setMenu(null)} />}
       {open && <TaskDialog key={open.id} task={open} board={board} onClose={() => setOpenId(null)} onToggleTimer={() => toggleTimer(open)} />}
       {settings && <BoardDialog board={board} onClose={() => setSettings(false)} onDeleted={() => setBoardId('general')} />}
       {creating && (

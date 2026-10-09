@@ -61,6 +61,19 @@ describe('задачи (канбан)', () => {
     expect(store.get().entries[0].end).toBeNull();
     await within(screen.getByRole('listitem', { name: 'Готово' })).findByText('Сверстать доску');
 
+    // правый клик: своё меню вместо браузерного
+    const cardEl = screen.getByRole('button', { name: 'Задача: Сверстать доску' });
+    expect(fireEvent.contextMenu(cardEl)).toBe(false); // событие отменено, меню браузера не откроется
+    const menu = await screen.findByRole('menu');
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'В работе' }));
+    await waitFor(() => expect(store.get().tasks[0].columnId).toBe(store.get().boards[0].columns[1].id));
+    expect(screen.queryByRole('menu')).toBeNull();
+    // и обратно в «Готово» тем же меню
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Задача: Сверстать доску' }));
+    fireEvent.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Готово' }));
+    await waitFor(() => expect(store.get().tasks[0].columnId).toBe(store.get().boards[0].columns[3].id));
+    await within(screen.getByRole('listitem', { name: 'Готово' })).findByText('Сверстать доску');
+
     // карточка: поля сохраняются, остановка таймера из окна
     fireEvent.click(screen.getByRole('button', { name: 'Задача: Сверстать доску' }));
     const dlg = (await screen.findByRole('dialog')) as HTMLElement;
