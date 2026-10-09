@@ -37,6 +37,7 @@ describe('режим фокуса', () => {
       s.entries.push({ id: 'run-focus-1', description: 'Лендинг', projectId: null, tags: [], billable: true, start: new Date(Date.now() - 61_000).toISOString(), end: null, source: 'timer' });
     });
     render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Инструменты фокуса' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Режим фокуса' }));
     const dlg = (await screen.findByRole('dialog', { name: 'Режим фокуса' })) as HTMLElement;
     expect(within(dlg).getByRole('heading', { name: 'Лендинг' })).toBeTruthy();
@@ -50,6 +51,7 @@ describe('режим фокуса', () => {
     const request = vi.fn().mockResolvedValue(undefined);
     HTMLElement.prototype.requestFullscreen = request;
     render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Инструменты фокуса' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Режим фокуса' }));
     fireEvent.click(await screen.findByRole('button', { name: 'На весь экран' }));
     expect(request).toHaveBeenCalled();

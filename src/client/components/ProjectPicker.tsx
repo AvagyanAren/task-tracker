@@ -11,9 +11,11 @@ interface Props {
   noneLabel?: string;
   includeId?: string | null;
   compact?: boolean;
+  /** Timer-bar look: an icon button until a project is chosen, then a chip with its name. */
+  bar?: boolean;
 }
 
-export function ProjectPicker({ projects, value, onChange, noneLabel = 'Без проекта', includeId, compact }: Props) {
+export function ProjectPicker({ projects, value, onChange, noneLabel = 'Без проекта', includeId, compact, bar }: Props) {
   const [q, setQ] = useState('');
   const current = projects.find((p) => p.id === value);
   const list = useMemo(
@@ -27,16 +29,23 @@ export function ProjectPicker({ projects, value, onChange, noneLabel = 'Без �
   return (
     <Popover
       trigger={(open, toggle) => (
-        <button
-          type="button"
-          className={`pick ${current ? 'has' : ''} ${compact ? 'compact' : ''}`}
-          onClick={toggle}
-          aria-expanded={open}
-          style={current ? { ['--pick' as string]: current.color } : undefined}
-        >
-          {current ? <ProjectDot color={current.color} /> : <Folder size={16} />}
-          <span>{current ? current.name : noneLabel}</span>
-        </button>
+        bar && !current ? (
+          <button type="button" className="icon-tool" onClick={toggle} aria-expanded={open} aria-label="Проект" title="Проект">
+            <Folder size={18} />
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={`pick ${current ? 'has' : ''} ${compact ? 'compact' : ''}`}
+            onClick={toggle}
+            aria-expanded={open}
+            aria-label={bar && current ? `Проект: ${current.name}` : undefined}
+            title={bar && current ? (current.rate > 0 ? `${current.name} · ${current.rate} ${current.currency}/ч` : current.name) : undefined}
+          >
+            {current ? <ProjectDot color={current.color} /> : <Folder size={16} />}
+            <span>{current ? current.name : noneLabel}</span>
+          </button>
+        )
       )}
     >
       {(close) => (

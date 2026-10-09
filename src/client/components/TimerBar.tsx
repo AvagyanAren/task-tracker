@@ -1,6 +1,6 @@
 import { DateField, Select, TimeField } from './fields.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Clock, Dollar, Focus, Pencil, Play, Plus, Square, Timer as TimerIcon } from '../icons.js';
+import { Dollar, Pencil, Play, Plus, Square, Timer as TimerIcon } from '../icons.js';
 import type { Entry } from '../../shared/types.js';
 import { entrySeconds } from '../../shared/report.js';
 import { dayKey, formatClock, isoToLocalTime, localToIso, parseDuration, resolveStartTime } from '../../shared/time.js';
@@ -10,8 +10,8 @@ import { api } from '../api.js';
 import { useApp } from '../ctx.js';
 import { ProjectDot, Segmented } from '../ui.js';
 import type { PomoApi } from '../usePomodoro.js';
-import { AmbientMixer } from './AmbientMixer.js';
 import { ProjectPicker } from './ProjectPicker.js';
+import { TimerTools } from './TimerTools.js';
 import { TagPicker } from './TagPicker.js';
 
 type Mode = 'timer' | 'manual';
@@ -199,7 +199,7 @@ export function TimerBar({ pomo, onFocus }: Props) {
 
   return (
     <div className={`timerbar ${running ? 'running' : ''}`}>
-      <div className="timerbar-top">
+      <div className="timerbar-row">
         <div className="desc-wrap">
           <input
             ref={descRef}
@@ -234,12 +234,48 @@ export function TimerBar({ pomo, onFocus }: Props) {
           )}
         </div>
 
+        <div className="timerbar-tools">
+          <ProjectPicker projects={state.projects} value={projectId} onChange={setProjectId} bar />
+          <TagPicker value={tags} known={known} onChange={setTags} bar />
+          <button
+            type="button"
+            className={billable ? 'icon-tool on' : 'icon-tool off'}
+            onClick={() => setBillable((b) => !b)}
+            aria-pressed={billable}
+            aria-label="Оплачиваемое время"
+            title={billable ? 'Оплачивается' : 'Не оплачивается'}
+          >
+            <Dollar size={18} />
+          </button>
+        </div>
+
+        <div className="timerbar-modes">
+          <Segmented<Mode>
+            label="Режим"
+            value={mode}
+            onChange={(m) => setMode(m)}
+            options={[
+              { value: 'timer', label: <TimerIcon size={16} />, title: 'Таймер (N)' },
+              { value: 'manual', label: <Plus size={16} />, title: 'Добавить время вручную (M)' }
+            ]}
+          />
+          <TimerTools pomo={pomo} running={Boolean(running)} onFocus={onFocus} />
+        </div>
+
         {mode === 'timer' ? (
           <div className="timerbar-run">
-            {running && (
-              <div className="startedat">
-                {editingStart === null ? (
-                  <button className="link-btn" title="Изменить время старта" onClick={() => setEditingStart(isoToLocalTime(running.start, tz))}>
+            {pomo.session && (
+              <span className="pomo-chip" title="Pomodoro">
+                {pomo.session.phase === 'work' ? 'Работа' : 'Перерыв'} {formatCountdown(pomo.remaining)}
+              </span>
+            )}
+            <div className="clock-wrap">
+              <div className={running ? 'clock live' : 'clock'} aria-live="off">
+                {formatClock(seconds)}
+              </div>
+              {running &&
+                (editingStart === null ? (
+                  <button className="link-btn startedat" title="Изменить время старта" onClick={() => setEditingStart(isoToLocalTime(running.start, tz))}>
                     <Pencil size={12} /> с {isoToLocalTime(running.start, tz)}
                   </button>
                 ) : (
@@ -256,11 +292,7 @@ export function TimerBar({ pomo, onFocus }: Props) {
                     placeholder="09:30"
                     aria-label="Время старта"
                   />
-                )}
-              </div>
-            )}
-            <div className={running ? 'clock live' : 'clock'} aria-live="off">
-              {formatClock(seconds)}
+                ))}
             </div>
             {running ? (
               <button className="btn stop round" onClick={stop} aria-label="Стоп" title="Стоп (S)">
@@ -313,56 +345,6 @@ export function TimerBar({ pomo, onFocus }: Props) {
           {mError && <span className="error inline">{mError}</span>}
         </div>
       )}
-
-      <div className="timerbar-meta">
-        <div className="timerbar-tools">
-          <ProjectPicker projects={state.projects} value={projectId} onChange={setProjectId} />
-          <TagPicker value={tags} known={known} onChange={setTags} />
-          <button
-            type="button"
-            className={billable ? 'tool on' : 'tool'}
-            onClick={() => setBillable((b) => !b)}
-            title="Оплачиваемое время"
-            aria-pressed={billable}
-          >
-            <Dollar size={16} /> <span className="tool-label">{billable ? 'Оплачивается' : 'Не оплачивается'}</span>
-          </button>
-        </div>
-
-        <div className="timerbar-extras">
-          {project && mode === 'timer' && !running && project.rate > 0 && (
-            <span className="muted small rate-hint">
-              {project.rate} {project.currency}/ч
-            </span>
-          )}
-          {pomo.session && (
-            <span className="pomo-chip" title="Pomodoro">
-              {pomo.session.phase === 'work' ? 'Работа' : 'Перерыв'} {formatCountdown(pomo.remaining)}
-            </span>
-          )}
-          {pomo.enabled && pomo.goal > 0 && (
-            <span className={pomo.doneToday >= pomo.goal ? 'goal-chip done' : 'goal-chip'} title="Помидоров сегодня / цель на день">
-              {pomo.doneToday}/{pomo.goal}
-            </span>
-          )}
-          <AmbientMixer />
-          <button className={pomo.enabled ? 'tool on' : 'tool'} onClick={pomo.toggle} title="Pomodoro" aria-pressed={pomo.enabled} aria-label="Pomodoro">
-            <Clock size={16} /> <span className="tool-label">Pomodoro</span>
-          </button>
-          <button className="tool" onClick={onFocus} disabled={!running} title="Режим фокуса (только таймер)" aria-label="Режим фокуса">
-            <Focus size={16} /> <span className="tool-label">Фокус</span>
-          </button>
-          <Segmented<Mode>
-            label="Режим"
-            value={mode}
-            onChange={(m) => setMode(m)}
-            options={[
-              { value: 'timer', label: <><TimerIcon size={14} /> Таймер</>, title: 'Таймер (N)' },
-              { value: 'manual', label: <><Clock size={14} /> Вручную</>, title: 'Добавить время вручную (M)' }
-            ]}
-          />
-        </div>
-      </div>
     </div>
   );
 }

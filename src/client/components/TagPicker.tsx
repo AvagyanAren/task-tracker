@@ -8,11 +8,13 @@ interface Props {
   known: string[];
   onChange: (tags: string[]) => void;
   compact?: boolean;
+  /** Timer-bar look: an icon button until a tag is chosen. */
+  bar?: boolean;
 }
 
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 
-export function TagPicker({ value, known, onChange, compact }: Props) {
+export function TagPicker({ value, known, onChange, compact, bar }: Props) {
   const [q, setQ] = useState('');
   const all = useMemo(() => {
     const m = new Map<string, string>();
@@ -28,17 +30,24 @@ export function TagPicker({ value, known, onChange, compact }: Props) {
   return (
     <Popover
       trigger={(open, tg) => (
-        <button
-          type="button"
-          className={`pick ${value.length ? 'has' : ''} ${compact ? 'compact' : ''}`}
-          onClick={tg}
-          aria-expanded={open}
-          title="Теги"
-        >
-          <Tag size={16} />
-          {value.length > 0 && <span>{value.length === 1 ? value[0] : `${value.length} тега`}</span>}
-          {!compact && value.length === 0 && <span>Теги</span>}
-        </button>
+        bar && value.length === 0 ? (
+          <button type="button" className="icon-tool" onClick={tg} aria-expanded={open} aria-label="Теги" title="Теги">
+            <Tag size={18} />
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={`pick ${value.length ? 'has' : ''} ${compact ? 'compact' : ''}`}
+            onClick={tg}
+            aria-expanded={open}
+            aria-label={value.length ? `Теги: ${value.join(', ')}` : undefined}
+            title="Теги"
+          >
+            <Tag size={16} />
+            {value.length > 0 && <span>{value.length === 1 ? value[0] : `${value.length} тега`}</span>}
+            {!compact && value.length === 0 && <span>Теги</span>}
+          </button>
+        )
       )}
     >
       {() => (

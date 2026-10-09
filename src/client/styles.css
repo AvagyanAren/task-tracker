@@ -156,7 +156,7 @@ label.field, .field { display: flex; flex-direction: column; gap: 5px; }
 .pick, .tool { display: inline-flex; align-items: center; gap: 7px; height: var(--h); padding: 0 12px; border: 1px solid var(--border-control); background: var(--surface); color: var(--text-2); border-radius: var(--r); font: inherit; font-weight: 600; font-size: var(--fs-sm); cursor: pointer; transition: all var(--dur-fast); max-width: 200px; }
 .pick span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pick:hover, .tool:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-.pick.has { color: var(--pick, var(--accent)); border-color: color-mix(in srgb, var(--pick, var(--accent)) 45%, var(--border)); background: color-mix(in srgb, var(--pick, var(--accent)) 8%, var(--surface)); }
+.pick.has { color: var(--text); background: var(--surface-2); }
 .pick.compact { height: var(--h-sm); }
 .tool { padding: 0 11px; }
 .tool.on { color: var(--success); border-color: color-mix(in srgb, var(--success) 50%, var(--border)); background: var(--success-soft); }
@@ -174,26 +174,9 @@ label.field, .field { display: flex; flex-direction: column; gap: 5px; }
 
 /* ---------- timer bar ---------- */
 .timer-page { display: flex; flex-direction: column; gap: 22px; max-width: 1180px; margin: 0 auto; }
-.timerbar { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl); padding: 14px 16px 10px; box-shadow: var(--shadow); transition: box-shadow var(--dur), border-color var(--dur); }
-.timerbar.running { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
-.timerbar-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.desc-wrap { position: relative; flex: 1; min-width: 220px; }
-.timer-desc { width: 100%; border: 0; box-shadow: none; background: transparent; font-size: var(--fs-xl); font-weight: 600; padding: 12px 8px; }
-.timer-desc:focus { box-shadow: none; }
 .suggest { position: absolute; left: 0; right: 0; top: 100%; z-index: var(--z-popover); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-lg); padding: 6px; }
-.timerbar-tools { display: flex; align-items: center; gap: 8px; }
-.timerbar-run { display: flex; align-items: center; gap: 14px; padding-left: 12px; border-left: 1px solid var(--border); }
-.startedat { position: absolute; top: -9px; right: 24px; background: var(--surface); padding: 0 6px; border-radius: var(--r-xs); }
 .mini-time { width: 78px; padding: 3px 6px; font-size: var(--fs-xs); }
-.clock { font-size: var(--fs-3xl); font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; min-width: 128px; text-align: right; color: var(--text-2); }
-.clock.live { color: var(--text); }
-.manual-row { display: flex; gap: 12px; flex-wrap: wrap; padding: 10px 8px 4px; border-top: 1px dashed var(--border); margin-top: 10px; }
-.manual-row label { display: flex; flex-direction: column; gap: 4px; }
-.manual-row input { width: 140px; }
-.timerbar-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); flex-wrap: wrap; }
 .foot-right { display: flex; align-items: center; gap: 8px; }
-.pomo-chip { font-size: var(--fs-sm); font-weight: 700; padding: 5px 10px; border-radius: var(--r-pill); background: var(--danger-soft); color: var(--danger); }
-.timerbar-foot .tool { height: 32px; }
 
 .timer-layout { display: grid; grid-template-columns: 1fr 280px; gap: 22px; align-items: start; }
 .timer-layout:has(.cal), .timer-layout:has(.ts) { grid-template-columns: 1fr; }
@@ -502,18 +485,7 @@ input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-o
   .content { padding: 14px 14px calc(88px + env(safe-area-inset-bottom)); }
 
   /* timer bar: description on top, big clock + button under it */
-  .timerbar { padding: 12px; border-radius: var(--r-lg); }
-  .timerbar-top { flex-direction: column; align-items: stretch; gap: 8px; }
-  .timer-desc { padding: 10px 4px; }
-  .timerbar-run { border-left: 0; padding-left: 0; justify-content: space-between; width: 100%; }
-  .clock { font-size: var(--fs-4xl); text-align: left; }
   .btn.round { width: 60px; height: 60px; }
-  .startedat { right: 12px; }
-  .timerbar-meta { flex-direction: column; align-items: stretch; }
-  .timerbar-tools { flex-wrap: wrap; }
-  .timerbar-extras { justify-content: space-between; flex-wrap: wrap; }
-  .timerbar-extras .tool-label { display: none; }
-  .timerbar-extras .tool { padding: 0; width: var(--h); justify-content: center; }
   .view-switch .seg-item { padding: 6px 8px; }
 
   .new-project, .grid2 { grid-template-columns: 1fr; }
@@ -608,12 +580,7 @@ input:hover:not(:focus):not(:disabled), textarea:hover:not(:focus):not(:disabled
 .copy-list em { font-style: normal; font-size: var(--fs-sm); }
 
 /* ---------- timer bar layout ---------- */
-.timerbar-top { flex-wrap: nowrap; }
-.timerbar-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px 14px; flex-wrap: wrap; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
-.timerbar-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.timerbar-extras { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .tool .tool-label { font-size: var(--fs-sm); }
-.rate-hint { margin-right: 4px; }
 
 /* ---------- mini timer (every screen except the timer itself) ---------- */
 .minitimer { position: fixed; z-index: var(--z-minitimer); left: 16px; bottom: 16px; display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 8px 8px 8px 14px; border: 1px solid var(--border-strong); border-radius: var(--r-pill); background: var(--surface); box-shadow: var(--shadow-lg); }
@@ -851,4 +818,57 @@ input:hover:not(:focus):not(:disabled), textarea:hover:not(:focus):not(:disabled
 @media (forced-colors: active) {
   .btn, .tool, .pick, .chip, .select, .board-tab, .snav, .nav-item { border: 1px solid ButtonText; }
   .nav-item.active, .snav.active, .board-tab.active, .seg-item.active { outline: 2px solid Highlight; }
+}
+
+
+/* ---------- timer bar: one calm row; secondary tools live behind icons ---------- */
+.timerbar { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl); padding: var(--sp-3) var(--sp-4); box-shadow: var(--shadow); transition: border-color var(--dur); }
+.timerbar.running { border-color: var(--accent); }
+.timerbar-row { display: flex; align-items: center; gap: var(--sp-3); }
+.desc-wrap { position: relative; flex: 1; min-width: 160px; }
+.timer-desc { width: 100%; height: var(--h-lg); border: 0; box-shadow: none; background: transparent; font: var(--type-subheading); padding: 0 var(--sp-2); }
+.timer-desc:focus { box-shadow: none; }
+.timerbar-tools, .timerbar-modes { display: flex; align-items: center; gap: var(--sp-1); }
+.timerbar-modes { padding-left: var(--sp-3); border-left: 1px solid var(--border); gap: var(--sp-2); }
+.timerbar-run { display: flex; align-items: center; gap: var(--sp-3); padding-left: var(--sp-3); border-left: 1px solid var(--border); }
+.clock-wrap { display: flex; flex-direction: column; align-items: flex-end; min-width: 120px; }
+.clock { font: var(--type-title); letter-spacing: var(--ls-tight); font-variant-numeric: tabular-nums; color: var(--text-2); }
+.clock.live { color: var(--text); }
+.startedat { padding: 0 var(--sp-1); }
+.mini-time { width: 78px; height: var(--h-sm); padding: 0 var(--sp-2); font-size: var(--fs-xs); }
+.pomo-chip { font: var(--type-caption); padding: var(--sp-1) var(--sp-3); border-radius: var(--r-pill); background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+
+/* Icon-only control for the bar: quiet until hovered, tinted when on. */
+.icon-tool { position: relative; display: inline-grid; place-items: center; width: var(--h); height: var(--h); border: 0; border-radius: var(--r); background: transparent; color: var(--text-2); cursor: pointer; transition: background var(--dur-fast), color var(--dur-fast); }
+.icon-tool:hover { background: var(--surface-3); color: var(--text); }
+.icon-tool.on { background: var(--success-soft); color: var(--success); }
+.icon-tool.off::after { content: ''; position: absolute; width: 22px; height: 2px; border-radius: var(--r-pill); background: currentColor; transform: rotate(-45deg); }
+.timerbar-modes .icon-tool.on { background: var(--accent-soft); color: var(--accent); }
+.timerbar-tools .pick { height: var(--h); max-width: 180px; }
+
+.tools-menu { display: flex; flex-direction: column; width: 300px; padding: var(--sp-1); }
+.tools-row { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--h); padding: 0 var(--sp-3); }
+.tools-row .switch-row { padding: 0; width: 100%; }
+.tools-action { border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text); font: var(--type-body-strong); text-align: left; cursor: pointer; }
+.tools-action:hover:not(:disabled) { background: var(--surface-3); }
+.tools-action:disabled { color: var(--text-3); cursor: not-allowed; }
+.tools-action span { flex: 1; }
+.chev { transition: transform var(--dur-fast); }
+.chev.open { transform: rotate(180deg); }
+.tools-menu .mixer { width: auto; padding: var(--sp-3); border-top: 1px solid var(--border); margin-top: var(--sp-1); }
+
+/* manual entry: one compact row under the bar */
+.manual-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-3); padding-top: var(--sp-3); margin-top: var(--sp-3); border-top: 1px solid var(--border); }
+.manual-row label { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.manual-row input, .manual-row .select { width: 100%; height: var(--h-sm); padding: 0 var(--sp-3); }
+.manual-row .error { grid-column: 1 / -1; }
+
+@media (max-width: 720px) {
+  .timerbar { padding: var(--sp-3); border-radius: var(--r-lg); }
+  .timerbar-row { flex-wrap: wrap; row-gap: var(--sp-2); }
+  .desc-wrap { flex-basis: 100%; }
+  .timerbar-modes { margin-left: auto; padding-left: 0; border-left: 0; }
+  .timerbar-run { flex-basis: 100%; justify-content: space-between; padding: var(--sp-2) 0 0; border-left: 0; border-top: 1px solid var(--border); }
+  .clock-wrap { align-items: flex-start; }
+  .manual-row { grid-template-columns: 1fr 1fr; }
 }

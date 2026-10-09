@@ -52,7 +52,7 @@ describe('интерфейс трекера (сквозной сценарий)'
     // 2. таймер с названием и проектом
     click('Таймер');
     fireEvent.change(await screen.findByLabelText(DESC), { target: { value: 'Мобильная версия' } });
-    click('Без проекта');
+    click('Проект');
     fireEvent.click(await screen.findByRole('button', { name: 'SFIT' }));
     click(/Старт/);
     await screen.findByRole('button', { name: /Стоп/ });
@@ -66,7 +66,7 @@ describe('интерфейс трекера (сквозной сценарий)'
     expect(timed.end).not.toBeNull();
 
     // 3. ручной режим: 10:00–12:30 сегодня = 2:30
-    fireEvent.click(screen.getByRole('tab', { name: /Вручную/ }));
+    fireEvent.click(screen.getByRole('tab', { name: /вручную/i }));
     fireEvent.change(screen.getByLabelText(DESC), { target: { value: 'Платежи' } });
     // проект остаётся выбранным после прошлого запуска
     for (const [label, value] of [['Начало', '10:00'], ['Конец', '12:30']]) {
@@ -121,7 +121,7 @@ describe('интерфейс трекера (сквозной сценарий)'
     render(<App />);
     await screen.findByLabelText(DESC);
     fireEvent.keyDown(window, { key: 'ь' });
-    await waitFor(() => expect(screen.getByRole('tab', { name: /Вручную/ }).getAttribute('aria-selected')).toBe('true'));
+    await waitFor(() => expect(screen.getByRole('tab', { name: /вручную/i }).getAttribute('aria-selected')).toBe('true'));
     fireEvent.keyDown(window, { key: '?' });
     expect(await screen.findByRole('dialog')).toBeTruthy();
   });
