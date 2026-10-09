@@ -69,8 +69,15 @@ describe('задачи (канбан)', () => {
     fireEvent.change(within(dlg).getByLabelText('Новый комментарий'), { target: { value: 'Готово к показу' } });
     fireEvent.click(within(dlg).getByRole('button', { name: 'Отправить' }));
     await waitFor(() => expect(store.get().tasks[0].comments).toHaveLength(1));
-    fireEvent.click(within(dlg).getByRole('button', { name: /Сохранить/ }));
     await waitFor(() => expect(store.get().tasks[0].checklist.map((i) => i.text)).toEqual(['Проверить на телефоне']));
+    // детали как в Jira: номер, история, оценка
+    expect(within(dlg).getByText(/#1$/, { selector: 'h2' })).toBeTruthy();
+    const est = within(dlg).getByLabelText('Оценка времени');
+    fireEvent.change(est, { target: { value: '2ч' } });
+    fireEvent.blur(est);
+    await waitFor(() => expect(store.get().tasks[0].estimate).toBe(7200));
+    fireEvent.click(within(dlg).getByRole('tab', { name: 'История' }));
+    await within(dlg).findByText(/Перенесена: К выполнению → Готово/);
 
     // история таймера показывает то же название
     fireEvent.click(screen.getByRole('button', { name: /^Таймер/ }));

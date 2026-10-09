@@ -50,6 +50,8 @@ export interface TaskInput {
   priority?: Priority;
   tags?: string[];
   projectId?: string | null;
+  completed?: boolean;
+  estimate?: number | null;
 }
 
 export type ClientInput = Partial<Pick<Client, 'name' | 'email' | 'address' | 'taxId' | 'currency' | 'dueDays' | 'notes' | 'archived'>>;
@@ -134,6 +136,8 @@ export const api = {
   moveTask: (id: string, columnId: string, index?: number) => req<State>('POST', `/api/tasks/${id}/move`, { columnId, index }),
   deleteTask: (id: string) => req<State>('DELETE', `/api/tasks/${id}`),
   addComment: (id: string, text: string) => req<State>('POST', `/api/tasks/${id}/comments`, { text }),
+  editComment: (id: string, cid: string, text: string) => req<State>('PUT', `/api/tasks/${id}/comments/${cid}`, { text }),
+  duplicateTask: (id: string) => req<{ id: string; state: State }>('POST', `/api/tasks/${id}/duplicate`),
   deleteComment: (id: string, cid: string) => req<State>('DELETE', `/api/tasks/${id}/comments/${cid}`),
   stopTimer: (own?: { id: string; at: string }) => req<State>('POST', '/api/timer/stop', own ?? {}),
   addEntry: (e: {

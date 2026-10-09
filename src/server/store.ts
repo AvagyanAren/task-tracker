@@ -57,6 +57,14 @@ function boards(raw: unknown): State['boards'] {
 }
 
 export function normalize(raw: Partial<State>): State {
+  const out = normalizeRaw(raw);
+  // Cards from before numbering get a number in the order they were made.
+  let max = Math.max(0, ...out.tasks.map((t) => t.num));
+  for (const t of [...out.tasks].filter((x) => !x.num).sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))) t.num = ++max;
+  return out;
+}
+
+function normalizeRaw(raw: Partial<State>): State {
   const base = emptyProfile();
   const p = (raw.profile ?? {}) as Partial<State['profile']>;
   return {
@@ -72,7 +80,12 @@ export function normalize(raw: Partial<State>): State {
       tags: t.tags ?? [],
       projectId: t.projectId ?? null,
       comments: t.comments ?? [],
-      order: Number.isFinite(t.order) ? t.order : i
+      order: Number.isFinite(t.order) ? t.order : i,
+      num: t.num ?? 0,
+      completed: Boolean(t.completed),
+      estimate: t.estimate ?? null,
+      activity: t.activity ?? [],
+      updatedAt: t.updatedAt ?? t.createdAt ?? ''
     })),
     profile: { ...base, ...p, sender: { ...base.sender, ...(p.sender ?? {}) } },
     projects: Array.isArray(raw.projects) ? raw.projects : [],

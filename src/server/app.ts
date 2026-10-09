@@ -524,6 +524,12 @@ export function createApp(store: StateStore, options: AppOptions = {}) {
     if (!t) throw new HttpError(404, 'Задача не найдена.');
     return t;
   };
+  const logTo = (t: Task, text: string) => {
+    t.activity.push({ id: randomUUID().slice(0, 8), at: new Date().toISOString(), text });
+    if (t.activity.length > 200) t.activity.splice(0, t.activity.length - 200);
+    t.updatedAt = new Date().toISOString();
+  };
+  const nextNum = (s: State) => Math.max(0, ...s.tasks.map((t) => t.num)) + 1;
   /** Closes the gaps in a column's order after a task moved, was added or removed. */
   const renumber = (s: State, boardId: string, columnId: string) => {
     s.tasks
@@ -626,6 +632,15 @@ export function createApp(store: StateStore, options: AppOptions = {}) {
       out.priority = b.priority as Priority;
     }
     if (b.tags !== undefined) out.tags = cleanTags(b.tags);
+    if (b.completed !== undefined) out.completed = Boolean(b.completed);
+    if (b.estimate !== undefined) {
+      if (b.estimate === null || b.estimate === '') out.estimate = null;
+      else {
+        const n = Number(b.estimate);
+        if (!Number.isFinite(n) || n < 0) throw new HttpError(400, 'Оценка — число секунд не меньше нуля.');
+        out.estimate = n === 0 ? null : Math.round(Math.min(n, 100000 * 3600));
+      }
+    }
     // A project board fixes the project; on the general board it is a free choice.
     if (board.projectId) out.projectId = board.projectId;
     else if (b.projectId !== undefined) out.projectId = checkProject(s, b.projectId);
@@ -657,8 +672,14 @@ export function createApp(store: StateStore, options: AppOptions = {}) {
           projectId: f.projectId ?? board.projectId,
           comments: [],
           order,
-          createdAt: new Date().toISOString()
+          num: nextNum(s),
+          completed: f.completed ?? false,
+          estimate: f.estimate ?? null,
+          activity: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         });
+        logTo(s.tasks[s.tasks.length - 1], 'Задача создана');
       });
       res.json({ id: created, state: await snapshot() });
     })
@@ -674,7 +695,17 @@ export function createApp(store: StateStore, options: AppOptions = {}) {
         const f = taskFields(s, board, b, true);
         // The time already tracked for the card keeps reading like the card.
         if (f.title && f.title !== t.title) for (const e of s.entries) if (e.taskId === t.id && e.description === t.title) e.description = f.title;
+        const P: Record<string, string> = { none: 'нет', low: 'низкий', medium: 'средний', high: 'высокий' };
+        if (f.title !== undefined && f.title !== t.title) logTo(t, `Название: «${t.title}» → «${f.title}»`);
+        if (f.description !== undefined && f.description !== t.description) logTo(t, 'Изменено описание');
+        if (f.priority !== undefined && f.priority !== t.priority) logTo(t, `Приоритет: ${P[t.priority]} → ${P[f.priority]}`);
+        if (f.dueDate !== undefined && f.dueDate !== t.dueDate) logTo(t, f.dueDate ? `Срок: ${f.dueDate}` : 'Срок убран');
+        if (f.completed !== undefined && f.completed !== t.completed) logTo(t, f.completed ? 'Отмечена выполненной' : 'Снова в работе');
+        if (f.estimate !== undefined && f.estimate !== t.estimate) logTo(t, f.estimate ? `Оценка: ${Math.round(f.estimate / 36) / 100} ч` : 'Оценка убрана');
+        if (f.projectId !== undefined && f.projectId !== t.projectId) logTo(t, 'Изменён проект');
+        if (f.tags !== undefined && JSON.stringify(f.tags) !== JSON.stringify(t.tags)) logTo(t, 'Изменены теги');
         Object.assign(t, f);
+        t.updatedAt = new Date().toISOString();
       });
       res.json(await snapshot());
     })
@@ -690,6 +721,7 @@ export function createApp(store: StateStore, options: AppOptions = {}) {
         const columnId = String(req.body?.columnId ?? t.columnId);
         if (!board.columns.some((c) => c.id === columnId)) throw new HttpError(400, 'Такой колонки нет.');
         const from = t.columnId;
+        if (from !== columnId) logTo(t, `Перенесена: ${board.columns.find((c) => c.id === from)?.name ?? '?'} → ${board.columns.find((c) => c.id === columnId)!.name}`);
         const column = s.tasks.filter((x) => x.boardId === board.id && x.columnId === columnId && x.id !== t.id).sort((a, c) => a.order - c.order);
         const index = Math.round(num(req.body?.index, 0, column.length, column.length));
         column.splice(index, 0, t);
@@ -720,9 +752,55 @@ export function createApp(store: StateStore, options: AppOptions = {}) {
       const text = str(req.body?.text, 4000);
       if (!text) throw new HttpError(400, 'Комментарий пустой.');
       await store.update((s) => {
-        taskOf(s, req.params.id).comments.push({ id: randomUUID().slice(0, 8), text, at: new Date().toISOString() });
+        const t = taskOf(s, req.params.id);
+        t.comments.push({ id: randomUUID().slice(0, 8), text, at: new Date().toISOString() });
+        t.updatedAt = new Date().toISOString();
       });
       res.json(await snapshot());
+    })
+  );
+
+  app.put(
+    '/api/tasks/:id/comments/:cid',
+    h(async (req, res) => {
+      const text = str(req.body?.text, 4000);
+      if (!text) throw new HttpError(400, 'Комментарий пустой.');
+      await store.update((s) => {
+        const c = taskOf(s, req.params.id).comments.find((x) => x.id === req.params.cid);
+        if (!c) throw new HttpError(404, 'Комментарий не найден.');
+        c.text = text;
+        c.editedAt = new Date().toISOString();
+      });
+      res.json(await snapshot());
+    })
+  );
+
+  /** A copy in the same column, right below the original: no comments, history or ticked items. */
+  app.post(
+    '/api/tasks/:id/duplicate',
+    h(async (req, res) => {
+      let created = '';
+      await store.update((s) => {
+        const t = taskOf(s, req.params.id);
+        const now = new Date().toISOString();
+        created = randomUUID();
+        for (const x of s.tasks) if (x.boardId === t.boardId && x.columnId === t.columnId && x.order > t.order) x.order++;
+        s.tasks.push({
+          ...structuredClone(t),
+          id: created,
+          title: `${t.title} (копия)`.slice(0, 300),
+          checklist: t.checklist.map((i) => ({ ...i, id: randomUUID().slice(0, 8), done: false })),
+          comments: [],
+          activity: [],
+          completed: false,
+          order: t.order + 1,
+          num: nextNum(s),
+          createdAt: now,
+          updatedAt: now
+        });
+        logTo(s.tasks[s.tasks.length - 1], `Создана копией #${t.num}`);
+      });
+      res.json({ id: created, state: await snapshot() });
     })
   );
 

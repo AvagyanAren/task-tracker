@@ -134,6 +134,14 @@ export interface TaskComment {
   id: string;
   text: string;
   at: string;
+  editedAt?: string;
+}
+
+/** One line of a card's history ("moved from A to B", "priority changed"…). */
+export interface TaskActivity {
+  id: string;
+  at: string;
+  text: string;
 }
 
 export interface Task {
@@ -151,7 +159,15 @@ export interface Task {
   comments: TaskComment[];
   /** Position inside its column (0 = top). */
   order: number;
+  /** Running number, shown as #12 and unique across all boards. */
+  num: number;
+  /** Marked done by hand, independent of the column. */
+  completed: boolean;
+  /** Planned time in seconds, or null. */
+  estimate: number | null;
+  activity: TaskActivity[];
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface State {

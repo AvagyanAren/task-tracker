@@ -132,6 +132,44 @@ describe('таймер из задачи', () => {
   });
 });
 
+describe('карточка как в Jira/Trello', () => {
+  it('номер, история, оценка, выполнено, правка комментария, копия', async () => {
+    const g = (await state()).boards.find((b) => b.id === 'general')!;
+    const id = (await call('POST', '/api/tasks', { boardId: 'general', columnId: g.columns[0].id, title: 'Детали' })).body.id as string;
+    let t = (await state()).tasks.find((x) => x.id === id)!;
+    expect(t.num).toBeGreaterThan(0);
+    expect(t.activity.map((a) => a.text)).toEqual(['Задача создана']);
+
+    await call('PUT', `/api/tasks/${id}`, { priority: 'high', estimate: 5400, completed: true, dueDate: '2026-11-01' });
+    await call('POST', `/api/tasks/${id}/move`, { columnId: g.columns[1].id });
+    t = (await state()).tasks.find((x) => x.id === id)!;
+    expect(t).toMatchObject({ estimate: 5400, completed: true });
+    const log = t.activity.map((a) => a.text).join('|');
+    expect(log).toContain('Приоритет: нет → высокий');
+    expect(log).toContain('Оценка: 1.5 ч');
+    expect(log).toContain('Перенесена: К выполнению → В работе');
+    expect((await call('PUT', `/api/tasks/${id}`, { estimate: -5 })).status).toBe(400);
+    await call('PUT', `/api/tasks/${id}`, { estimate: null });
+    expect((await state()).tasks.find((x) => x.id === id)!.estimate).toBeNull();
+
+    await call('POST', `/api/tasks/${id}/comments`, { text: 'раз' });
+    const cid = (await state()).tasks.find((x) => x.id === id)!.comments[0].id;
+    await call('PUT', `/api/tasks/${id}/comments/${cid}`, { text: 'два' });
+    const c = (await state()).tasks.find((x) => x.id === id)!.comments[0];
+    expect(c.text).toBe('два');
+    expect(c.editedAt).toBeTruthy();
+
+    await call('PUT', `/api/tasks/${id}`, { checklist: [{ text: 'a', done: true }] });
+    const dup = (await call('POST', `/api/tasks/${id}/duplicate`)).body;
+    const copy = (dup.state as State).tasks.find((x) => x.id === dup.id)!;
+    expect(copy.title).toBe('Детали (копия)');
+    expect(copy.num).toBeGreaterThan(t.num);
+    expect(copy.checklist.map((i) => i.done)).toEqual([false]);
+    expect(copy.comments).toHaveLength(0);
+    expect(copy.columnId).toBe(g.columns[1].id);
+  });
+});
+
 describe('копии', () => {
   it('слияние добавляет доски проектов и задачи один раз', () => {
     const base = (): State => ({
@@ -147,8 +185,8 @@ describe('копии', () => {
     const incoming = base();
     incoming.boards.push({ id: 'b2', name: 'P', projectId: 'p1', columns: [{ id: 'x', name: 'X' }], createdAt: '' });
     incoming.tasks.push(
-      { id: 't1', boardId: 'b2', columnId: 'x', title: 'T', description: '', checklist: [], dueDate: null, priority: 'none', tags: [], projectId: 'p1', comments: [], order: 0, createdAt: '' },
-      { id: 't2', boardId: 'general', columnId: 'gone', title: 'G', description: '', checklist: [], dueDate: null, priority: 'none', tags: [], projectId: null, comments: [], order: 0, createdAt: '' }
+      { id: 't1', boardId: 'b2', columnId: 'x', title: 'T', description: '', checklist: [], dueDate: null, priority: 'none', tags: [], projectId: 'p1', comments: [], order: 0, num: 1, completed: false, estimate: null, activity: [], createdAt: '', updatedAt: '' },
+      { id: 't2', boardId: 'general', columnId: 'gone', title: 'G', description: '', checklist: [], dueDate: null, priority: 'none', tags: [], projectId: null, comments: [], order: 0, num: 1, completed: false, estimate: null, activity: [], createdAt: '', updatedAt: '' }
     );
     mergeState(target, incoming);
     mergeState(target, incoming);

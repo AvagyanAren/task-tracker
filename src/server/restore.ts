@@ -99,7 +99,7 @@ export function mergeState(target: State, incoming: State): MergeSummary {
     const board = target.boards.find((x) => x.id === boardId);
     if (!board) continue;
     const columnId = board.columns.some((c) => c.id === t.columnId) ? t.columnId : board.columns[0].id;
-    target.tasks.push({ ...t, boardId: board.id, columnId, projectId: t.projectId ? idMap.get(t.projectId) ?? null : null });
+    target.tasks.push({ ...t, num: Math.max(0, ...target.tasks.map((x) => x.num)) + 1, boardId: board.id, columnId, projectId: t.projectId ? idMap.get(t.projectId) ?? null : null });
   }
   keepOneRunning(target);
   return summary;
