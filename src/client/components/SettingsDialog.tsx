@@ -1,10 +1,10 @@
 import { confirmDialog } from '../confirm.js';
 import { useEffect, useState } from 'react';
-import { Bell, Briefcase, Computer, Moon, Settings as SettingsIcon, Sun, Timer, Wallet, Download, Coffee } from '../icons.js';
+import { Bell, Briefcase, Check, Computer, Moon, Settings as SettingsIcon, Sun, Timer, Wallet, Download, Coffee } from '../icons.js';
 import { api, type BackupInfo } from '../api.js';
 import { useApp } from '../ctx.js';
 import { idleSupported, requestIdlePermission } from '../useIdle.js';
-import { askNotificationPermission } from '../sound.js';
+import { askNotificationPermission, notificationStatus } from '../sound.js';
 import { Dialog, NumberField, Segmented, SettingRow, Switch } from '../ui.js';
 import { Select } from './fields.js';
 import type { Theme } from '../settings.js';
@@ -97,12 +97,12 @@ function DataSection() {
 
   return (
     <section className="sgroup">
-      <SettingRow title="Резервная копия" hint={`Сейчас в базе: ${state.entries.length} записей, ${state.projects.length} проектов`}>
+      <SettingRow title="Резервная копия" hint={`${state.entries.length} записей`}>
         <button className="btn subtle" onClick={() => void download()}>
           Скачать
         </button>
       </SettingRow>
-      <SettingRow title="Загрузить из файла" hint="Копия Tempo или data/tracker.json">
+      <SettingRow title="Загрузить из файла" hint="JSON-копия Tempo">
         <label className="btn subtle file-btn">
           Выбрать файл
           <input type="file" accept=".json,application/json" onChange={(e) => void pick(e.target.files?.[0])} />
@@ -111,7 +111,7 @@ function DataSection() {
       {pending !== null && (
         <div className="restore-box">
           <strong>{fileName}</strong>
-          <p className="hint">«Добавить» ничего не удаляет и не дублирует то, что уже есть. «Заменить» стирает текущие данные.</p>
+          <p className="hint">«Добавить» ничего не удаляет и не дублирует. «Заменить» стирает текущие данные.</p>
           <div className="row gap">
             <button className="btn primary" onClick={() => void restore('merge')}>
               Добавить к текущим
@@ -126,7 +126,7 @@ function DataSection() {
         <div className="copies-head">
           <div className="srow-text">
             <strong>Автоматические копии</strong>
-            <span>Раз в сутки на сервере и перед каждым возвратом. Хранятся последние 20.</span>
+            <span>Раз в сутки, хранятся последние 20</span>
           </div>
           <button className="btn subtle" onClick={() => void makeCopy()}>
             Сделать копию
@@ -135,7 +135,7 @@ function DataSection() {
         {copies === null ? (
           <div className="skeleton" style={{ height: 44 }} />
         ) : copies.length === 0 ? (
-          <p className="hint">Копий пока нет. Первая появится сегодня ночью или по кнопке.</p>
+          <p className="hint">Копий пока нет.</p>
         ) : (
           <ul className="copy-list">
             {copies.slice(0, 6).map((c) => (
@@ -160,7 +160,7 @@ function DataSection() {
         )}
       </div>
       {authRequired && (
-        <SettingRow title="Сессия" hint="Выйти из онлайн-версии на этом устройстве">
+        <SettingRow title="Сессия">
           <button className="btn ghost" onClick={logout}>
             Выйти
           </button>
@@ -182,7 +182,6 @@ function ProfileSection() {
   const dirty = JSON.stringify([sender, lang, dueDays, notes]) !== JSON.stringify([p.sender, p.lang, p.dueDays, p.notes]);
   return (
     <section className="sgroup">
-      <p className="hint">Эти данные подставляются в каждый новый счёт. В уже выставленных счетах ничего не меняется.</p>
       <div className="form-stack">
         <label className="field">
           <span>Ваше имя или компания</span>
@@ -209,7 +208,7 @@ function ProfileSection() {
         <div className="grid2">
           <div className="field">
             <span>Срок оплаты</span>
-            <NumberField value={dueDays} unit="дн." min={0} max={365} onChange={setDueDays} />
+            <NumberField ariaLabel="Срок оплаты" value={dueDays} unit="дн." min={0} max={365} onChange={setDueDays} />
           </div>
         </div>
         <label className="field">
@@ -227,19 +226,20 @@ function ProfileSection() {
 }
 
 type SectionId = 'general' | 'timer' | 'pomodoro' | 'notify' | 'profile' | 'data';
-const SECTIONS: Array<{ id: SectionId; label: string; hint: string; icon: React.ReactNode }> = [
-  { id: 'general', label: 'Основные', hint: 'Тема, записи, клавиши', icon: <SettingsIcon size={17} /> },
-  { id: 'timer', label: 'Таймер', hint: 'Оплата, простой, напоминания', icon: <Timer size={17} /> },
-  { id: 'pomodoro', label: 'Pomodoro', hint: 'Интервалы и цель на день', icon: <Coffee size={17} /> },
-  { id: 'notify', label: 'Уведомления', hint: 'Звук и окна браузера', icon: <Bell size={17} /> },
-  { id: 'profile', label: 'Профиль и счета', hint: 'Ваши реквизиты', icon: <Briefcase size={17} /> },
-  { id: 'data', label: 'Данные', hint: 'Копии, перенос, выход', icon: <Download size={17} /> }
+const SECTIONS: Array<{ id: SectionId; label: string; icon: React.ReactNode }> = [
+  { id: 'general', label: 'Основные', icon: <SettingsIcon size={17} /> },
+  { id: 'timer', label: 'Таймер', icon: <Timer size={17} /> },
+  { id: 'pomodoro', label: 'Pomodoro', icon: <Coffee size={17} /> },
+  { id: 'notify', label: 'Уведомления', icon: <Bell size={17} /> },
+  { id: 'profile', label: 'Профиль и счета', icon: <Briefcase size={17} /> },
+  { id: 'data', label: 'Данные', icon: <Download size={17} /> }
 ];
 
 export function SettingsDialog({ onClose, initial = 'general' }: { onClose: () => void; initial?: SectionId }) {
   const { settings, setSettings, notify } = useApp();
   const [section, setSection] = useState<SectionId>(initial);
   const [idleNote, setIdleNote] = useState<string | null>(null);
+  const [perm, setPerm] = useState(notificationStatus);
   const p = settings.pomodoro;
   const setPomo = (patch: Partial<typeof p>) => setSettings({ pomodoro: { ...p, ...patch } });
   const current = SECTIONS.find((s) => s.id === section)!;
@@ -282,12 +282,11 @@ export function SettingsDialog({ onClose, initial = 'general' }: { onClose: () =
         <div className="settings-panel" id="spanel" role="tabpanel" aria-labelledby={`stab-${section}`}>
           <header className="settings-head">
             <h3>{current.label}</h3>
-            <p className="muted">{current.hint}</p>
           </header>
 
           {section === 'general' && (
             <section className="sgroup">
-              <SettingRow title="Тема" hint="«Авто» следует настройке системы">
+              <SettingRow title="Тема">
                 <Segmented<Theme>
                   label="Тема"
                   value={settings.theme}
@@ -299,19 +298,19 @@ export function SettingsDialog({ onClose, initial = 'general' }: { onClose: () =
                   ]}
                 />
               </SettingRow>
-              <Switch checked={settings.groupSimilar} onChange={(groupSimilar) => setSettings({ groupSimilar })} label="Склеивать похожие записи" hint="Одинаковые задачи за один день показываются одной строкой" />
-              <Switch checked={settings.hotkeys} onChange={(hotkeys) => setSettings({ hotkeys })} label="Горячие клавиши" hint="N, S, M, C и ? — работают вне полей ввода" />
+              <Switch checked={settings.groupSimilar} onChange={(groupSimilar) => setSettings({ groupSimilar })} label="Склеивать одинаковые записи за день" />
+              <Switch checked={settings.hotkeys} onChange={(hotkeys) => setSettings({ hotkeys })} label="Горячие клавиши" />
             </section>
           )}
 
           {section === 'timer' && (
             <section className="sgroup">
-              <Switch checked={settings.defaultBillable} onChange={(defaultBillable) => setSettings({ defaultBillable })} label="Новое время оплачивается" hint="Можно переключить для каждой записи отдельно" />
-              <SettingRow title="Напомнить, если таймер идёт дольше" hint="Один раз на таймер. 0 — не напоминать">
+              <Switch checked={settings.defaultBillable} onChange={(defaultBillable) => setSettings({ defaultBillable })} label="Новое время оплачивается" />
+              <SettingRow title="Напомнить о долгом таймере" hint="0 — не напоминать">
                 <NumberField ariaLabel="Напомнить, если таймер идёт дольше" value={settings.longTimerHours} unit="ч" min={0} max={24} onChange={(longTimerHours) => setSettings({ longTimerHours })} />
               </SettingRow>
-              <Switch checked={settings.idleEnabled} onChange={toggleIdle} label="Спрашивать про время, пока вас не было" hint={idleSupported() ? 'Нужно разрешение браузера' : 'Нужен Chrome или Edge: другие браузеры не сообщают о простое'} />
-              <SettingRow title="Считать простоем после" hint="Работает, когда включено определение простоя">
+              <Switch checked={settings.idleEnabled} onChange={toggleIdle} label="Определять простой" hint={idleSupported() ? undefined : 'Нужен Chrome или Edge'} />
+              <SettingRow title="Считать простоем после">
                 <NumberField ariaLabel="Считать простоем после" value={settings.idleMinutes} unit="мин" min={1} max={120} onChange={(idleMinutes) => setSettings({ idleMinutes })} />
               </SettingRow>
               {idleNote && <p className="hint">{idleNote}</p>}
@@ -326,31 +325,38 @@ export function SettingsDialog({ onClose, initial = 'general' }: { onClose: () =
                 <NumberField label="Длинный" unit="мин" value={p.longBreakMin} min={1} max={120} onChange={(longBreakMin) => setPomo({ longBreakMin })} />
                 <NumberField label="Длинный после" unit="шт." value={p.longEvery} min={2} max={12} onChange={(longEvery) => setPomo({ longEvery })} />
               </div>
-              <SettingRow title="Цель на день" hint="Сколько помидоров вы хотите набрать">
+              <SettingRow title="Цель на день">
                 <NumberField ariaLabel="Цель на день" value={p.dailyGoal} unit="шт." min={0} max={30} onChange={(dailyGoal) => setPomo({ dailyGoal })} />
               </SettingRow>
-              <Switch checked={p.autoStart} onChange={(autoStart) => setPomo({ autoStart })} label="Автозапуск следующего помидора" hint="После перерыва таймер стартует сам" />
+              <Switch checked={p.autoStart} onChange={(autoStart) => setPomo({ autoStart })} label="Автозапуск следующего помидора" />
             </section>
           )}
 
           {section === 'notify' && (
             <section className="sgroup">
-              <Switch checked={p.gentleSound} onChange={(gentleSound) => setPomo({ gentleSound })} label="Мягкий звук" hint="Плавный сигнал вместо резкого, когда помидор или перерыв закончились" />
-              <SettingRow title="Уведомления браузера" hint="Показывать окно, когда помидор или перерыв закончились">
-                <button
-                  className="btn subtle"
-                  onClick={async () => {
-                    const r = await askNotificationPermission();
-                    notify(r === 'granted' ? 'Уведомления включены' : 'Уведомления не разрешены — останется только звук');
-                  }}
-                >
-                  Разрешить
-                </button>
-              </SettingRow>
-              <SettingRow title="Напоминание о долгом таймере" hint="Включается в разделе «Таймер»">
-                <button className="btn subtle" onClick={() => setSection('timer')}>
-                  Перейти
-                </button>
+              <Switch checked={p.gentleSound} onChange={(gentleSound) => setPomo({ gentleSound })} label="Мягкий звук" />
+              <SettingRow
+                title="Уведомления браузера"
+                hint={perm === 'denied' ? 'Запрещены в браузере. Разрешите в настройках сайта.' : perm === 'unsupported' ? 'Браузер не поддерживает уведомления.' : undefined}
+              >
+                {perm === 'granted' ? (
+                  <span className="status-ok">
+                    <Check size={15} /> Включены
+                  </span>
+                ) : perm === 'default' ? (
+                  <button
+                    className="btn subtle"
+                    onClick={async () => {
+                      const r = await askNotificationPermission();
+                      setPerm(notificationStatus());
+                      notify(r === 'granted' ? 'Уведомления включены' : 'Уведомления не разрешены — останется только звук');
+                    }}
+                  >
+                    Разрешить
+                  </button>
+                ) : (
+                  <span className="status-off">{perm === 'denied' ? 'Запрещены' : 'Недоступны'}</span>
+                )}
               </SettingRow>
             </section>
           )}

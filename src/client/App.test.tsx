@@ -23,7 +23,10 @@ beforeAll(async () => {
   vi.stubGlobal('fetch', (url: string, init?: RequestInit) => (offline ? Promise.reject(new TypeError('Failed to fetch')) : real(url.startsWith('/') ? base + url : url, init)));
   window.confirm = () => true;
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  location.hash = '';
+});
 afterAll(() => new Promise<void>((r) => server.close(() => r())));
 
 const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }));

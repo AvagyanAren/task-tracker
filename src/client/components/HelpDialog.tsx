@@ -19,7 +19,7 @@ export function HelpDialog({ onClose }: { onClose: () => void }) {
           </div>
         ))}
       </div>
-      <p className="hint">Работают, когда курсор не в поле ввода. Подходят и русская, и английская раскладки.</p>
+      <p className="hint">Не работают внутри полей ввода. Подходит любая раскладка.</p>
       <h3>В описании записи</h3>
       <div className="keys">
         <div className="keys-row">

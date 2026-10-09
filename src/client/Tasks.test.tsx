@@ -23,7 +23,10 @@ beforeAll(async () => {
   window.confirm = () => true;
   localStorage.clear();
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  location.hash = '';
+});
 afterAll(() => new Promise<void>((r) => server.close(() => r())));
 
 configure({ asyncUtilTimeout: 4000 });
@@ -68,6 +71,12 @@ describe('задачи (канбан)', () => {
     fireEvent.click(within(menu).getByRole('menuitem', { name: 'В работе' }));
     await waitFor(() => expect(store.get().tasks[0].columnId).toBe(store.get().boards[0].columns[1].id));
     expect(screen.queryByRole('menu')).toBeNull();
+    // то же меню открывается кнопкой «⋯» (на телефоне правого клика нет)
+    fireEvent.click(screen.getByRole('button', { name: 'Действия с задачей' }));
+    expect(await screen.findByRole('menu')).toBeTruthy();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
+
     // и обратно в «Готово» тем же меню
     fireEvent.contextMenu(screen.getByRole('button', { name: 'Задача: Сверстать доску' }));
     fireEvent.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Готово' }));

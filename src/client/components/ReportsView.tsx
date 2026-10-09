@@ -134,7 +134,6 @@ export function ReportsView() {
       <header className="page-head">
         <div>
           <h1>Отчёты</h1>
-          <p className="muted">Часы и деньги за выбранный период.</p>
         </div>
         <div className="row gap">
           <Segmented<Mode>
@@ -226,7 +225,7 @@ export function ReportsView() {
         {pomodoros > 0 && (
           <div className="stat">
             <span className="stat-label">Помидоры</span>
-            <strong className="stat-value">🍅 {pomodoros}</strong>
+            <strong className="stat-value">{pomodoros}</strong>
             <span className="muted">≈ {formatHM(pomodoros * settings.pomodoro.workMin * 60)} фокуса</span>
           </div>
         )}
@@ -291,7 +290,7 @@ export function ReportsView() {
 
 function Summary({ report, fromDay, toDay }: { report: ReturnType<typeof buildReport>; fromDay: string; toDay: string }) {
   const { state } = useApp();
-  const colorOf = (id: string | null) => (id ? state.projects.find((p) => p.id === id)?.color : undefined) ?? '#9aa0b4';
+  const colorOf = (id: string | null) => (id ? state.projects.find((p) => p.id === id)?.color : undefined) ?? 'var(--text-3)';
   // Show every day of a short period (empty ones too) so the bars keep a sensible width and rhythm.
   const known = new Map(report.byDay.map((d) => [d.day, d.seconds]));
   let days: Array<{ day: string; seconds: number }> = [...report.byDay].sort((a, b) => (a.day < b.day ? -1 : 1));

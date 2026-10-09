@@ -149,8 +149,14 @@ export default function App() {
   }, [isRunning]);
 
   useEffect(() => {
-    document.title = isRunning ? '● Tempo — идёт таймер' : 'Tempo — трекер времени';
-  }, [isRunning]);
+    const label = NAV.find((n) => n.tab === tab)?.label ?? 'Tempo';
+    document.title = `${isRunning ? '● ' : ''}${label} — Tempo`;
+  }, [isRunning, tab]);
+
+  // The address follows the section, so a reload or a shared link opens the same screen.
+  useEffect(() => {
+    if (location.hash.replace('#', '').split('+')[0] !== tab) history.replaceState(null, '', `#${tab}`);
+  }, [tab]);
 
   const show = useCallback((text: string, error: boolean, action?: { label: string; onClick: () => void }) => {
     setToast({ text, error, action });

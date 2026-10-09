@@ -1,0 +1,197 @@
+/*
+ * Tempo design tokens. The only file that may contain raw colour values.
+ *
+ * Layers:
+ *   1. Primitives  --n-*, --terra-*, --green-*, --red-*, --amber-*, --blue-*   (never used in components)
+ *   2. Semantic    --bg, --surface, --text, --accent, --success …              (light-dark(), one definition per token)
+ *   3. Scales      type, space, radius, size, elevation, layers, motion
+ *
+ * Every text/background pair below is checked against WCAG 2.2 AA by src/shared/design.test.ts.
+ * See DESIGN.md before adding a token or a component.
+ */
+
+:root {
+  /* ---------- 1. Primitives ---------- */
+  --white: #ffffff;
+  --n-25: #faf9f5;
+  --n-50: #f5f4ee;
+  --n-100: #eceae2;
+  --n-150: #e6e3da;
+  --n-300: #c8c6bc;
+  --n-400: #a3a096;
+  --n-500: #8a8579;
+  --n-600: #67625a;
+  --n-700: #524f48;
+  --n-725: #3a3937;
+  --n-750: #363533;
+  --n-775: #4d4c49;
+  --n-800: #2b2a28;
+  --n-850: #262624;
+  --n-900: #1f1e1d;
+  --n-950: #1a1918;
+
+  --terra-50: #fbe9e1;
+  --terra-200: #ee9b7e;
+  --terra-300: #e5896a;
+  --terra-600: #a84a28;
+  --terra-700: #933f20;
+  --terra-900: #3d2c25;
+
+  --green-100: #dff5ec;
+  --green-300: #4cd2a0;
+  --green-700: #097350;
+  --green-900: #1d3329;
+
+  --red-100: #fce8e9;
+  --red-300: #ff8a8e;
+  --red-700: #c4262b;
+  --red-900: #3d2326;
+
+  --amber-100: #fdf0d0;
+  --amber-300: #f2b84b;
+  --amber-700: #8a5a00;
+  --amber-900: #3a2f17;
+
+  --blue-100: #e4edfd;
+  --blue-300: #8ab4ff;
+  --blue-700: #1d5fd1;
+  --blue-900: #1f2d4a;
+
+  /* ---------- 2. Semantic colour (light, dark) ---------- */
+  --bg: light-dark(var(--n-50), var(--n-900));
+  --surface: light-dark(var(--white), var(--n-850));
+  --surface-2: light-dark(var(--n-25), var(--n-800));
+  --surface-3: light-dark(var(--n-100), var(--n-750));
+  --scrim: light-dark(rgb(31 30 29 / 0.45), rgb(0 0 0 / 0.6));
+
+  --text: light-dark(var(--n-900), var(--n-25));
+  --text-2: light-dark(var(--n-700), var(--n-300));
+  --text-3: light-dark(var(--n-600), var(--n-400));
+
+  /* Dividers are decorative; a control edge must stay visible on its own (3:1). */
+  --border: light-dark(var(--n-150), var(--n-725));
+  --border-strong: light-dark(var(--n-300), var(--n-775));
+  --border-control: light-dark(var(--n-500), var(--n-500));
+
+  /* One accent colour serves as text and as fill; --accent-ink is the text on a fill. */
+  --accent: light-dark(var(--terra-600), var(--terra-300));
+  --accent-2: light-dark(var(--terra-700), var(--terra-200));
+  --accent-soft: light-dark(var(--terra-50), var(--terra-900));
+  --accent-ink: light-dark(var(--white), var(--n-900));
+
+  --success: light-dark(var(--green-700), var(--green-300));
+  --success-soft: light-dark(var(--green-100), var(--green-900));
+  --danger: light-dark(var(--red-700), var(--red-300));
+  --danger-soft: light-dark(var(--red-100), var(--red-900));
+  --warn: light-dark(var(--amber-700), var(--amber-300));
+  --warn-soft: light-dark(var(--amber-100), var(--amber-900));
+  --info: light-dark(var(--blue-700), var(--blue-300));
+  --info-soft: light-dark(var(--blue-100), var(--blue-900));
+  --on-danger: light-dark(var(--white), var(--n-900));
+
+  --focus-ring: 2px solid var(--accent);
+  --focus-offset: 2px;
+
+  /* Full-screen focus mode: always dark, whatever the theme. */
+  --immersive-bg: var(--n-950);
+  --immersive-text: var(--white);
+  --immersive-text-2: rgb(255 255 255 / 0.72);
+
+  /* Printed invoice: always light, shares nothing with the app theme. */
+  --paper-bg: var(--white);
+  --paper-text: #1b1b1f;
+  --paper-text-2: #3a3a44;
+  --paper-muted: #62626c;
+  --paper-line: #e3e3e8;
+  --paper-line-soft: #e9e9ee;
+
+  /* ---------- 3. Scales ---------- */
+  --font: 'Manrope Variable', 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 18px;
+  --fs-2xl: 22px;
+  --fs-3xl: 28px;
+  --fs-4xl: 36px;
+  --fs-5xl: 48px;
+  --fs-display: clamp(64px, 14vw, 150px);
+
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-extrabold: 800;
+
+  --lh-tight: 1.15;
+  --lh-snug: 1.3;
+  --lh-base: 1.45;
+
+  --ls-tight: -0.02em;
+  --ls-caps: 0.06em;
+
+  /* Text styles: use `font: var(--type-…)`; add letter-spacing / transform next to it when the style needs it. */
+  --type-display: var(--fw-extrabold) var(--fs-display) / var(--lh-tight) var(--font);
+  --type-title: var(--fw-extrabold) var(--fs-3xl) / var(--lh-tight) var(--font);
+  --type-heading: var(--fw-extrabold) var(--fs-xl) / var(--lh-snug) var(--font);
+  --type-subheading: var(--fw-bold) var(--fs-lg) / var(--lh-snug) var(--font);
+  --type-body: var(--fw-medium) var(--fs-md) / var(--lh-base) var(--font);
+  --type-body-strong: var(--fw-bold) var(--fs-md) / var(--lh-base) var(--font);
+  --type-small: var(--fw-medium) var(--fs-sm) / var(--lh-base) var(--font);
+  --type-caption: var(--fw-semibold) var(--fs-xs) / var(--lh-base) var(--font);
+  --type-overline: var(--fw-bold) var(--fs-xs) / var(--lh-base) var(--font);
+
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r: 12px;
+  --r-lg: 18px;
+  --r-xl: 22px;
+  --r-pill: 999px;
+  --r-round: 50%;
+
+  --h-sm: 32px;
+  --h: 40px;
+  --h-lg: 48px;
+  --sidebar: 232px;
+  --sidebar-collapsed: 68px;
+
+  --shadow-sm: none;
+  --shadow: none;
+  --shadow-lg: 0 24px 60px light-dark(rgb(30 20 20 / 0.18), rgb(0 0 0 / 0.6));
+
+  --z-raised: 2;
+  --z-above: 3;
+  --z-sticky: 6;
+  --z-popover: 40;
+  --z-minitimer: 55;
+  --z-sync: 58;
+  --z-nav: 60;
+  --z-overlay: 100;
+  --z-menu: 110;
+  --z-immersive: 150;
+  --z-confirm: 200;
+  --z-toast: 300;
+
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  --dur-slow: 250ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  color-scheme: light dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}

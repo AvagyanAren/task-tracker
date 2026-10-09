@@ -23,7 +23,10 @@ beforeAll(async () => {
   window.confirm = () => true;
   localStorage.clear();
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  location.hash = '';
+});
 afterAll(() => new Promise<void>((r) => server.close(() => r())));
 
 configure({ asyncUtilTimeout: 4000 });
@@ -34,12 +37,12 @@ describe('настройки по разделам', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Настройки' }));
     const dlg = (await screen.findByRole('dialog')) as HTMLElement;
     // по умолчанию только раздел «Основные»
-    expect(within(dlg).getByText('Склеивать похожие записи')).toBeTruthy();
+    expect(within(dlg).getByText('Склеивать одинаковые записи за день')).toBeTruthy();
     expect(within(dlg).queryByText('Цель на день')).toBeNull();
 
     fireEvent.click(within(dlg).getByRole('tab', { name: 'Pomodoro' }));
     expect(within(dlg).getByText('Цель на день')).toBeTruthy();
-    expect(within(dlg).queryByText('Склеивать похожие записи')).toBeNull();
+    expect(within(dlg).queryByText('Склеивать одинаковые записи за день')).toBeNull();
 
     fireEvent.click(within(dlg).getByRole('tab', { name: 'Таймер' }));
     fireEvent.change(within(dlg).getByLabelText('Напомнить, если таймер идёт дольше'), { target: { value: '6' } });

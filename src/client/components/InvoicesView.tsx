@@ -135,7 +135,6 @@ export function InvoicesView() {
       <header className="page-head">
         <div>
           <h1>Счета</h1>
-          <p className="muted">Выставленные счета, кто должен и что уже оплачено.</p>
         </div>
         <button className="btn primary" onClick={() => setCreating(true)}>
           <Plus size={16} /> Новый счёт
@@ -162,7 +161,7 @@ export function InvoicesView() {
 
       {rows.length === 0 ? (
         <Empty icon={<Invoice size={28} />} title="Счетов пока нет">
-          Выберите клиента и период, а время, ставки и итоги Tempo подставит сам.
+          Время, ставки и итоги подставятся сами.
         </Empty>
       ) : (
         <>

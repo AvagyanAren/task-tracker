@@ -71,7 +71,6 @@ export function ProjectsView() {
       <header className="page-head">
         <div>
           <h1>Проекты</h1>
-          <p className="muted">Ставка за час нужна, чтобы отчёты считали деньги: часы × ставка проекта.</p>
         </div>
         <Segmented<'projects' | 'clients'>
           label="Раздел"
@@ -110,7 +109,7 @@ export function ProjectsView() {
 
       {list.length === 0 ? (
         <Empty icon={<Briefcase size={28} />} title="Проектов пока нет">
-          Создайте первый проект выше или импортируйте историю из Toggl.
+          Создайте проект выше.
         </Empty>
       ) : (
         <section className="panel flush">

@@ -40,7 +40,7 @@ export function FocusMode({ pomo, onClose }: { pomo: PomoApi; onClose: () => voi
         )}
         <h1>{running.description || 'Без названия'}</h1>
         <div className="focus-clock">{formatClock(entrySeconds(running, now))}</div>
-        {pomo.session?.phase === 'work' && <div className="focus-pomo">🍅 до перерыва {formatCountdown(pomo.remaining)}</div>}
+        {pomo.session?.phase === 'work' && <div className="focus-pomo">До перерыва {formatCountdown(pomo.remaining)}</div>}
         <button className="btn stop big" onClick={() => stopTimer()}>
           <Square size={20} solid /> Остановить
         </button>

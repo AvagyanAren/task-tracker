@@ -61,7 +61,7 @@ export function EntryList() {
             </span>
           )}
           {p && (
-            <span className="proj" style={{ color: p.color }}>
+            <span className="proj">
               <ProjectDot color={p.color} size={8} /> {p.name}
             </span>
           )}
@@ -96,7 +96,7 @@ export function EntryList() {
   if (days.length === 0) {
     return (
       <Empty icon={<Timer size={30} />} title="Пока нет записей">
-        Запустите таймер сверху, нажмите <strong>M</strong>, чтобы добавить время вручную, или загрузите историю на вкладке «Импорт».
+        Запустите таймер сверху или нажмите <strong>M</strong>, чтобы добавить время вручную.
       </Empty>
     );
   }
@@ -134,7 +134,7 @@ export function EntryList() {
                       <span className="count">{g.entries.length}</span>
                       <span className="entry-desc">{first.description || <em className="muted">(без названия)</em>}</span>
                       {p && (
-                        <span className="proj" style={{ color: p.color }}>
+                        <span className="proj">
                           <ProjectDot color={p.color} size={8} /> {p.name}
                         </span>
                       )}

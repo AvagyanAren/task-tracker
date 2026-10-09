@@ -48,7 +48,7 @@ function ClientDialog({ client, onClose }: { client: Client | null; onClose: () 
           </label>
           <div className="field">
             <span>Срок оплаты</span>
-            <NumberField value={d.dueDays} unit="дн." min={0} max={365} onChange={(dueDays) => set({ dueDays })} />
+            <NumberField ariaLabel="Срок оплаты" value={d.dueDays} unit="дн." min={0} max={365} onChange={(dueDays) => set({ dueDays })} />
           </div>
         </div>
         <label className="field">
@@ -88,10 +88,7 @@ export function ClientsView() {
 
   return (
     <>
-      <div className="row between">
-        <p className="muted" style={{ margin: 0 }}>
-          Клиент получает счета. У одного клиента может быть несколько проектов, и все они попадут в один счёт.
-        </p>
+      <div className="row end">
         <button className="btn primary" onClick={() => setDialog('new')}>
           <Plus size={16} /> Новый клиент
         </button>
@@ -99,7 +96,7 @@ export function ClientsView() {
 
       {rows.length === 0 ? (
         <Empty icon={<Wallet size={28} />} title="Клиентов пока нет">
-          Добавьте клиента и привяжите к нему проекты, тогда счета будут заполняться сами.
+          Привяжите к клиенту проекты, и счета заполнятся сами.
         </Empty>
       ) : (
         <section className="panel flush">

@@ -29,7 +29,6 @@ export function Login({ onDone }: { onDone: () => void }) {
       <form className="login-card" onSubmit={(e) => void submit(e)}>
         <Logo size={48} />
         <h1>Tempo</h1>
-        <p className="muted">Введите пароль, чтобы открыть трекер времени.</p>
         <input type="password" autoFocus autoComplete="current-password" placeholder="Пароль" value={password} onChange={(e) => setPassword(e.target.value)} aria-label="Пароль" />
         {error && <p className="error" role="alert">{error}</p>}
         <button className="btn primary" type="submit" disabled={busy || !password}>

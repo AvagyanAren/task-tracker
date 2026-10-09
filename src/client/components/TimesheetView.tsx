@@ -127,7 +127,7 @@ export function TimesheetView() {
                 <tr key={r.key}>
                   <td className="ts-task">
                     <div className="ts-name">{r.description || <em className="muted">(без названия)</em>}</div>
-                    <div className="ts-proj" style={{ color: p?.color }}>
+                    <div className="ts-proj">
                       <ProjectDot color={p?.color} size={8} /> {p?.name ?? 'Без проекта'}
                     </div>
                   </td>
@@ -159,7 +159,7 @@ export function TimesheetView() {
               <tr>
                 <td colSpan={9}>
                   <Empty icon={<Table size={28} />} title="На этой неделе записей нет">
-                    Добавьте строку ниже и вносите часы прямо в клетки.
+                    Добавьте строку ниже.
                   </Empty>
                 </td>
               </tr>
@@ -189,7 +189,7 @@ export function TimesheetView() {
           <Plus size={15} /> Добавить строку
         </button>
       </div>
-      <p className="hint">Введите время в клетку (2:30, 2.5, 90m) и нажмите Enter. Стрелки перемещают по клеткам, Esc отменяет правку. Пустая клетка удаляет запись. Клетки с несколькими записями правятся в списке.</p>
+      <p className="hint">Время в клетке: 2:30, 2.5 или 90m, затем Enter. Стрелки — между клетками, Esc — отмена.</p>
     </div>
   );
 }

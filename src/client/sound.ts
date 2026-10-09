@@ -50,6 +50,8 @@ export function systemNotify(title: string, body: string) {
   }
 }
 
+export const notificationStatus = (): NotificationPermission | 'unsupported' => (typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported');
+
 export async function askNotificationPermission(): Promise<NotificationPermission | 'unsupported'> {
   if (!('Notification' in window)) return 'unsupported';
   if (Notification.permission !== 'default') return Notification.permission;

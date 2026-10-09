@@ -280,7 +280,7 @@ export function InvoiceDialog({ fromDay: from0, toDay: to0, scope: scope0, onClo
                 })}
               </div>
             )}
-            {mixedCurrency && <p className="hint overdue-text">В счёте проекты в разных валютах. Выберите период или клиента так, чтобы валюта была одна.</p>}
+            {mixedCurrency && <p className="hint overdue-text">Проекты в разных валютах. Оставьте в счёте одну валюту.</p>}
           </section>
 
           <section>
@@ -300,7 +300,7 @@ export function InvoiceDialog({ fromDay: from0, toDay: to0, scope: scope0, onClo
               <div className="grid2">
                 <div className="field">
                   <span>Срок оплаты</span>
-                  <NumberField value={days} unit="дн." min={0} max={365} onChange={setDueDays} />
+                  <NumberField ariaLabel="Срок оплаты" value={days} unit="дн." min={0} max={365} onChange={setDueDays} />
                 </div>
                 <div className="field">
                   <span>Язык счёта</span>
@@ -318,11 +318,11 @@ export function InvoiceDialog({ fromDay: from0, toDay: to0, scope: scope0, onClo
               <div className="grid2">
                 <div className="field">
                   <span>Скидка</span>
-                  <NumberField value={discountPct} unit="%" min={0} max={100} onChange={setDiscountPct} />
+                  <NumberField ariaLabel="Скидка" value={discountPct} unit="%" min={0} max={100} onChange={setDiscountPct} />
                 </div>
                 <div className="field">
                   <span>Налог / НДС</span>
-                  <NumberField value={taxPct} unit="%" min={0} max={100} onChange={setTaxPct} />
+                  <NumberField ariaLabel="Налог" value={taxPct} unit="%" min={0} max={100} onChange={setTaxPct} />
                 </div>
               </div>
             </div>
@@ -337,7 +337,6 @@ export function InvoiceDialog({ fromDay: from0, toDay: to0, scope: scope0, onClo
               <textarea rows={2} placeholder="Адрес" value={sender.address} onChange={(e) => setSender({ ...sender, address: e.target.value })} />
               <input placeholder="Email" value={sender.email} onChange={(e) => setSender({ ...sender, email: e.target.value })} />
               <textarea rows={4} placeholder={'Реквизиты для оплаты\nБанк, счёт / IBAN, SWIFT'} value={sender.payment} onChange={(e) => setSender({ ...sender, payment: e.target.value })} />
-              <p className="hint">Запоминается и подставляется в следующие счета на любом устройстве.</p>
             </div>
           </details>
 

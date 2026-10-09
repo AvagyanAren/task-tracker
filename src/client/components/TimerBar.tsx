@@ -204,7 +204,7 @@ export function TimerBar({ pomo, onFocus }: Props) {
           <input
             ref={descRef}
             className="timer-desc"
-            placeholder={mode === 'timer' ? 'Над чем работаете? Подсказка: @проект  #тег' : 'Что делали? Подсказка: @проект  #тег'}
+            placeholder={mode === 'timer' ? 'Над чем работаете? @проект #тег' : 'Что делали? @проект #тег'}
             value={description}
             onChange={(e) => {
               setDescription(e.target.value);
@@ -322,10 +322,10 @@ export function TimerBar({ pomo, onFocus }: Props) {
             type="button"
             className={billable ? 'tool on' : 'tool'}
             onClick={() => setBillable((b) => !b)}
-            title={billable ? 'Оплачиваемое время (нажмите, чтобы отключить)' : 'Не оплачивается (нажмите, чтобы включить)'}
+            title="Оплачиваемое время"
             aria-pressed={billable}
           >
-            <Dollar size={16} /> <span className="tool-label">{billable ? 'Оплата' : 'Без оплаты'}</span>
+            <Dollar size={16} /> <span className="tool-label">{billable ? 'Оплачивается' : 'Не оплачивается'}</span>
           </button>
         </div>
 
@@ -337,7 +337,7 @@ export function TimerBar({ pomo, onFocus }: Props) {
           )}
           {pomo.session && (
             <span className="pomo-chip" title="Pomodoro">
-              🍅 {pomo.session.phase === 'work' ? 'Работа' : 'Перерыв'} {formatCountdown(pomo.remaining)}
+              {pomo.session.phase === 'work' ? 'Работа' : 'Перерыв'} {formatCountdown(pomo.remaining)}
             </span>
           )}
           {pomo.enabled && pomo.goal > 0 && (
@@ -346,8 +346,8 @@ export function TimerBar({ pomo, onFocus }: Props) {
             </span>
           )}
           <AmbientMixer />
-          <button className={pomo.enabled ? 'tool on' : 'tool'} onClick={pomo.toggle} title="Pomodoro: 25 мин работы / 5 мин перерыв" aria-pressed={pomo.enabled} aria-label="Pomodoro">
-            🍅 <span className="tool-label">Pomodoro</span>
+          <button className={pomo.enabled ? 'tool on' : 'tool'} onClick={pomo.toggle} title="Pomodoro" aria-pressed={pomo.enabled} aria-label="Pomodoro">
+            <Clock size={16} /> <span className="tool-label">Pomodoro</span>
           </button>
           <button className="tool" onClick={onFocus} disabled={!running} title="Режим фокуса (только таймер)" aria-label="Режим фокуса">
             <Focus size={16} /> <span className="tool-label">Фокус</span>

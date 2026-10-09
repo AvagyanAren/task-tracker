@@ -57,7 +57,7 @@ export function ImportView({ onGoReports }: { onGoReports: () => void }) {
         <div>
           <h1>Импорт из Toggl</h1>
           <p className="muted">
-            В Toggl: <strong>Reports → Detailed → Export → CSV</strong>. Повторная загрузка того же файла ничего не задвоит.
+            В Toggl: <strong>Reports → Detailed → Export → CSV</strong>
           </p>
         </div>
       </header>
@@ -66,7 +66,7 @@ export function ImportView({ onGoReports }: { onGoReports: () => void }) {
         <label className="dropzone">
           <FileImport size={28} />
           <strong>{fileName || 'Выберите CSV-файл'}</strong>
-          <span className="muted">Время в файле без часового пояса, берётся пояс этого компьютера (UTC{off >= 0 ? '+' : ''}{off / 60})</span>
+          <span className="muted">Часовой пояс: UTC{off >= 0 ? '+' : ''}{off / 60}</span>
           <input type="file" accept=".csv,text/csv" onChange={(e) => void onFile(e.target.files?.[0])} />
         </label>
       </section>
@@ -86,7 +86,7 @@ export function ImportView({ onGoReports }: { onGoReports: () => void }) {
               <dd>{preview.newProjects.length ? preview.newProjects.join(', ') : 'нет'}</dd>
             </div>
           </dl>
-          {preview.newProjects.length > 0 && <p className="hint">Новым проектам ставится ставка 0 — выставите её в разделе «Проекты».</p>}
+          {preview.newProjects.length > 0 && <p className="hint">Ставка новых проектов — 0. Задайте её в «Проектах».</p>}
           <button className="btn primary" disabled={busy || preview.newEntries === 0} onClick={() => void doImport()}>
             Импортировать
           </button>
@@ -99,7 +99,7 @@ export function ImportView({ onGoReports }: { onGoReports: () => void }) {
             <Check size={18} /> Готово
           </h3>
           <p>
-            Добавлено записей: {done.newEntries} ({formatHM(done.newSeconds)}), новых проектов: {done.newProjects.length}. Задайте ставки в «Проектах» и смотрите суммы в отчётах.
+            Добавлено записей: {done.newEntries} ({formatHM(done.newSeconds)}), новых проектов: {done.newProjects.length}.
           </p>
           <button className="btn subtle" onClick={onGoReports}>
             Открыть отчёты

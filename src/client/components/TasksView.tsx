@@ -5,7 +5,7 @@ import { dayKey, formatHM, isoToLocalTime, parseDuration } from '../../shared/ti
 import { api, type TaskInput } from '../api.js';
 import { confirmDialog } from '../confirm.js';
 import { useApp } from '../ctx.js';
-import { Check, CheckList, ChevronDown, Clock, Comment, Copy, Flag, Kanban, Pencil, Play, Plus, Square, Tag, Trash, X } from '../icons.js';
+import { Check, CheckList, ChevronDown, Clock, Comment, Copy, Flag, Kanban, More, Pencil, Play, Plus, Square, Tag, Trash, X } from '../icons.js';
 import { optMoveTask } from '../optimistic.js';
 import { Dialog, Empty, ProjectDot, Segmented } from '../ui.js';
 import { ContextMenu, type MenuItem } from './ContextMenu.js';
@@ -182,7 +182,7 @@ export function TasksView() {
         {(p || t.tags.length > 0) && (
           <div className="task-tags">
             {p && (
-              <span className="proj" style={{ color: p.color }}>
+              <span className="proj">
                 <ProjectDot color={p.color} size={8} /> {p.name}
               </span>
             )}
@@ -228,6 +228,19 @@ export function TasksView() {
           >
             {isRunning ? <Square size={14} solid /> : <Play size={14} solid />}
           </button>
+          <button
+            className="btn icon ghost task-more"
+            title="Действия"
+            aria-label="Действия с задачей"
+            aria-haspopup="menu"
+            onClick={(e) => {
+              e.stopPropagation();
+              const r = e.currentTarget.getBoundingClientRect();
+              setMenu({ x: r.left, y: r.bottom + 4, items: cardMenu(t) });
+            }}
+          >
+            <More size={16} />
+          </button>
         </div>
       </div>
     );
@@ -238,7 +251,6 @@ export function TasksView() {
       <header className="page-head">
         <div>
           <h1>Задачи</h1>
-          <p className="muted">Карточки не запускают таймер сами: время идёт, только когда вы нажмёте ▶ на карточке.</p>
         </div>
         <div className="row gap">
           <input className="task-search" type="search" placeholder="Найти задачу" aria-label="Найти задачу" value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -306,7 +318,7 @@ export function TasksView() {
 
       {tasks.length === 0 && (
         <Empty icon={<Kanban size={28} />} title="Пока ни одной карточки">
-          Нажмите «Добавить карточку» в любой колонке. Тут же можно запустить таймер: он попадёт в историю и отчёты с названием карточки.
+          Добавьте карточку в любую колонку.
         </Empty>
       )}
 
@@ -721,7 +733,7 @@ function TaskDialog({ task, board, onClose, onToggleTimer }: { task: Task; board
             </dd>
             <dt>Проект</dt>
             <dd>
-              {board.projectId ? <span className="muted small">Задан доской проекта</span> : <ProjectPicker projects={state.projects} value={task.projectId} onChange={(projectId) => void patch({ projectId })} includeId={task.projectId} />}
+              {board.projectId ? <span className="proj-cell">{(() => { const p = state.projects.find((x) => x.id === board.projectId); return p ? <><ProjectDot color={p.color} />{p.name}</> : null; })()}</span> : <ProjectPicker projects={state.projects} value={task.projectId} onChange={(projectId) => void patch({ projectId })} includeId={task.projectId} />}
             </dd>
             <dt>Теги</dt>
             <dd>
@@ -783,7 +795,7 @@ function NewBoardDialog({ projects, onClose, onCreated }: { projects: Array<{ id
   return (
     <Dialog title="Доска проекта" onClose={onClose}>
       <div className="form-stack">
-        <p className="muted small">У каждого проекта может быть одна своя доска. Карточки на ней автоматически относятся к этому проекту. Общая доска есть всегда.</p>
+        <p className="muted small">Одна доска на проект. Карточки на ней относятся к этому проекту.</p>
         <label className="field">
           <span>Проект</span>
           <Select<string> value={projectId} ariaLabel="Проект" options={projects.map((p) => ({ value: p.id, label: p.name }))} onChange={setProjectId} />

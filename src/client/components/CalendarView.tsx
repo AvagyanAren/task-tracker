@@ -147,7 +147,7 @@ export function CalendarView() {
           ))}
         </div>
       </div>
-      <p className="hint">Потяните мышью по пустому месту, чтобы добавить запись; нажмите на блок, чтобы править.</p>
+      <p className="hint">Потяните по пустому месту, чтобы добавить запись.</p>
 
       {dialog && <EntryDialog entry={dialog.entry} prefill={dialog.prefill} onClose={() => setDialog(null)} />}
     </div>
