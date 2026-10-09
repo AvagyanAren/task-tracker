@@ -1,6 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import type { State } from '../shared/types.js';
+import { generalBoard } from '../shared/blank.js';
 
 export interface BackupInfo {
   /** `YYYY-MM-DD` for the daily copy, `YYYY-MM-DDTHHMMSS` for manual and pre-restore copies. */
@@ -47,7 +48,13 @@ export const emptyProfile = (): State['profile'] => ({
   notes: ''
 });
 
-export const emptyState = (): State => ({ projects: [], entries: [], clients: [], invoices: [], profile: emptyProfile() });
+export const emptyState = (): State => ({ projects: [], entries: [], clients: [], invoices: [], profile: emptyProfile(), boards: [generalBoard()], tasks: [] });
+
+/** Keeps the general board present (older files and fresh databases have none). */
+function boards(raw: unknown): State['boards'] {
+  const list = Array.isArray(raw) ? (raw as State['boards']) : [];
+  return list.some((b) => b.id === 'general') ? list : [generalBoard(), ...list];
+}
 
 export function normalize(raw: Partial<State>): State {
   const base = emptyProfile();
@@ -55,6 +62,18 @@ export function normalize(raw: Partial<State>): State {
   return {
     clients: Array.isArray(raw.clients) ? raw.clients : [],
     invoices: Array.isArray(raw.invoices) ? raw.invoices : [],
+    boards: boards(raw.boards),
+    tasks: (Array.isArray(raw.tasks) ? raw.tasks : []).map((t, i) => ({
+      ...t,
+      description: t.description ?? '',
+      checklist: t.checklist ?? [],
+      dueDate: t.dueDate ?? null,
+      priority: t.priority ?? 'none',
+      tags: t.tags ?? [],
+      projectId: t.projectId ?? null,
+      comments: t.comments ?? [],
+      order: Number.isFinite(t.order) ? t.order : i
+    })),
     profile: { ...base, ...p, sender: { ...base.sender, ...(p.sender ?? {}) } },
     projects: Array.isArray(raw.projects) ? raw.projects : [],
     entries: (Array.isArray(raw.entries) ? raw.entries : []).map((e) => ({

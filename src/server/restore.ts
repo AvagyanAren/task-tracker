@@ -81,6 +81,26 @@ export function mergeState(target: State, incoming: State): MergeSummary {
     if (target.invoices.some((x) => x.id === inv.id || x.number === inv.number)) continue;
     target.invoices.push({ ...inv, clientId: inv.clientId ? clientMap.get(inv.clientId) ?? null : null });
   }
+  // Boards match by id, or by project (one board per project); tasks by id.
+  const boardMap = new Map<string, string>();
+  for (const b of incoming.boards) {
+    const pid = b.projectId ? idMap.get(b.projectId) ?? null : null;
+    const same = target.boards.find((x) => x.id === b.id) ?? target.boards.find((x) => x.projectId === pid && (pid !== null || x.id === 'general'));
+    if (same) boardMap.set(b.id, same.id);
+    else if (b.projectId && !pid) continue;
+    else {
+      target.boards.push({ ...b, projectId: pid });
+      boardMap.set(b.id, b.id);
+    }
+  }
+  for (const t of incoming.tasks) {
+    if (target.tasks.some((x) => x.id === t.id)) continue;
+    const boardId = boardMap.get(t.boardId);
+    const board = target.boards.find((x) => x.id === boardId);
+    if (!board) continue;
+    const columnId = board.columns.some((c) => c.id === t.columnId) ? t.columnId : board.columns[0].id;
+    target.tasks.push({ ...t, boardId: board.id, columnId, projectId: t.projectId ? idMap.get(t.projectId) ?? null : null });
+  }
   keepOneRunning(target);
   return summary;
 }

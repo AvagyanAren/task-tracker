@@ -2,7 +2,7 @@ import express from 'express';
 import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
-import type { Client, Entry, InvoiceRecord, Project, State } from '../shared/types.js';
+import type { Board, Client, Entry, InvoiceRecord, Priority, Project, State, Task } from '../shared/types.js';
 import { computeTotals, lineAmount, nextInvoiceNumber } from '../shared/invoice.js';
 import { createAuth } from './auth.js';
 import { BackupError, mergeState, parseBackup } from './restore.js';
@@ -183,6 +183,10 @@ export function createApp(store: StateStore, options: AppOptions = {}) {
         if (s.entries.some((e) => e.projectId === req.params.id)) {
           throw new HttpError(409, 'В проекте есть записи времени — его можно только архивировать.');
         }
+        const board = s.boards.find((b) => b.projectId === req.params.id);
+        if (board && s.tasks.some((t) => t.boardId === board.id)) throw new HttpError(409, 'У проекта есть доска с задачами — удалите их или заархивируйте проект.');
+        s.boards = s.boards.filter((b) => b.projectId !== req.params.id);
+        for (const t of s.tasks) if (t.projectId === req.params.id) t.projectId = null;
         s.projects = s.projects.filter((p) => p.id !== req.params.id);
       });
       res.json(await snapshot());
@@ -200,15 +204,21 @@ export function createApp(store: StateStore, options: AppOptions = {}) {
         if (s.entries.some((e) => e.id === id)) return; // the same request arrived again
         const running = s.entries.find((e) => e.end === null);
         if (running) running.end = Date.parse(now) > Date.parse(running.start) ? now : running.start; // like Toggl: starting a new timer stops the old one
+        const taskId = req.body?.taskId ? String(req.body.taskId) : null;
+        const task = taskId ? s.tasks.find((t) => t.id === taskId) : undefined;
+        if (taskId && !task) throw new HttpError(404, 'Задача не найдена.');
+        // Time started from a card carries the card's title; project and tags default to the card's.
+        const description = String(req.body?.description ?? '').trim().slice(0, 500) || task?.title || '';
         s.entries.push({
           id,
-          description: String(req.body?.description ?? '').trim().slice(0, 500),
-          projectId: checkProject(s, req.body?.projectId),
-          tags: cleanTags(req.body?.tags),
+          description,
+          projectId: req.body?.projectId !== undefined ? checkProject(s, req.body.projectId) : task?.projectId ?? null,
+          tags: req.body?.tags !== undefined ? cleanTags(req.body.tags) : task?.tags ?? [],
           billable: req.body?.billable === undefined ? true : Boolean(req.body.billable),
           start: now,
           end: null,
-          source: 'timer'
+          source: 'timer',
+          ...(task ? { taskId: task.id } : {})
         });
       });
       res.json(await snapshot());
@@ -501,6 +511,232 @@ export function createApp(store: StateStore, options: AppOptions = {}) {
     })
   );
 
+  /* ---------------- boards and tasks ---------------- */
+
+  const PRIORITIES: Priority[] = ['none', 'low', 'medium', 'high'];
+  const boardOf = (s: State, id: unknown): Board => {
+    const b = s.boards.find((x) => x.id === id);
+    if (!b) throw new HttpError(404, 'Доска не найдена.');
+    return b;
+  };
+  const taskOf = (s: State, id: unknown): Task => {
+    const t = s.tasks.find((x) => x.id === id);
+    if (!t) throw new HttpError(404, 'Задача не найдена.');
+    return t;
+  };
+  /** Closes the gaps in a column's order after a task moved, was added or removed. */
+  const renumber = (s: State, boardId: string, columnId: string) => {
+    s.tasks
+      .filter((t) => t.boardId === boardId && t.columnId === columnId)
+      .sort((a, b) => a.order - b.order)
+      .forEach((t, i) => (t.order = i));
+  };
+  const cleanColumns = (v: unknown, existing: Board['columns']): Board['columns'] => {
+    if (!Array.isArray(v) || v.length === 0) throw new HttpError(400, 'На доске нужна хотя бы одна колонка.');
+    if (v.length > 12) throw new HttpError(400, 'Колонок не больше 12.');
+    const used = new Set<string>();
+    return (v as Array<Record<string, unknown>>).map((c) => {
+      const name = str(c?.name, 60);
+      if (!name) throw new HttpError(400, 'У колонки должно быть название.');
+      let id = typeof c?.id === 'string' && existing.some((e) => e.id === c.id) ? c.id : randomUUID().slice(0, 8);
+      while (used.has(id)) id = randomUUID().slice(0, 8);
+      used.add(id);
+      return { id, name };
+    });
+  };
+
+  app.post(
+    '/api/boards',
+    h(async (req, res) => {
+      const name = str(req.body?.name, 80);
+      const projectId = req.body?.projectId ? String(req.body.projectId) : null;
+      let created = '';
+      await store.update((s) => {
+        if (!projectId) throw new HttpError(400, 'Выберите проект: общая доска уже есть.');
+        const project = s.projects.find((p) => p.id === projectId);
+        if (!project) throw new HttpError(400, 'Такого проекта нет.');
+        if (s.boards.some((b) => b.projectId === projectId)) throw new HttpError(409, 'У этого проекта уже есть доска.');
+        const columns = Array.isArray(req.body?.columns) && req.body.columns.length ? cleanColumns(req.body.columns, []) : s.boards.find((b) => b.id === 'general')!.columns.map((c) => ({ id: randomUUID().slice(0, 8), name: c.name }));
+        created = randomUUID();
+        s.boards.push({ id: created, name: name || project.name, projectId, columns, createdAt: new Date().toISOString() });
+      });
+      res.json({ id: created, state: await snapshot() });
+    })
+  );
+
+  app.put(
+    '/api/boards/:id',
+    h(async (req, res) => {
+      await store.update((s) => {
+        const b = boardOf(s, req.params.id);
+        if (req.body?.name !== undefined) {
+          const name = str(req.body.name, 80);
+          if (!name) throw new HttpError(400, 'Укажите название доски.');
+          b.name = name;
+        }
+        if (req.body?.columns !== undefined) {
+          const next = cleanColumns(req.body.columns, b.columns);
+          // Tasks of a removed column land in the first column that is left.
+          for (const t of s.tasks) if (t.boardId === b.id && !next.some((c) => c.id === t.columnId)) t.columnId = next[0].id;
+          b.columns = next;
+          for (const c of next) renumber(s, b.id, c.id);
+        }
+      });
+      res.json(await snapshot());
+    })
+  );
+
+  app.delete(
+    '/api/boards/:id',
+    h(async (req, res) => {
+      await store.update((s) => {
+        const b = boardOf(s, req.params.id);
+        if (b.id === 'general') throw new HttpError(400, 'Общую доску удалить нельзя.');
+        const ids = new Set(s.tasks.filter((t) => t.boardId === b.id).map((t) => t.id));
+        for (const e of s.entries) if (e.taskId && ids.has(e.taskId)) e.taskId = null; // the tracked time stays
+        s.tasks = s.tasks.filter((t) => t.boardId !== b.id);
+        s.boards = s.boards.filter((x) => x.id !== b.id);
+      });
+      res.json(await snapshot());
+    })
+  );
+
+  const cleanChecklist = (v: unknown): Task['checklist'] =>
+    (Array.isArray(v) ? (v as Array<Record<string, unknown>>) : []).slice(0, 100).flatMap((i) => {
+      const text = str(i?.text, 200);
+      return text ? [{ id: cleanId(i?.id) ?? randomUUID().slice(0, 8), text, done: Boolean(i?.done) }] : [];
+    });
+
+  /** Fields shared by create and update; `partial` leaves out what the request does not mention. */
+  const taskFields = (s: State, board: Board, b: Record<string, unknown>, partial: boolean): Partial<Task> => {
+    const out: Partial<Task> = {};
+    if (!partial || b.title !== undefined) {
+      const title = str(b.title, 300);
+      if (!title) throw new HttpError(400, 'Укажите название задачи.');
+      out.title = title;
+    }
+    if (b.description !== undefined) out.description = str(b.description, 8000);
+    if (b.checklist !== undefined) out.checklist = cleanChecklist(b.checklist);
+    if (b.dueDate !== undefined) {
+      if (b.dueDate !== null && b.dueDate !== '' && !isDay(b.dueDate)) throw new HttpError(400, 'Проверьте срок задачи.');
+      out.dueDate = b.dueDate ? (b.dueDate as string) : null;
+    }
+    if (b.priority !== undefined) {
+      if (!PRIORITIES.includes(b.priority as Priority)) throw new HttpError(400, 'Неизвестный приоритет.');
+      out.priority = b.priority as Priority;
+    }
+    if (b.tags !== undefined) out.tags = cleanTags(b.tags);
+    // A project board fixes the project; on the general board it is a free choice.
+    if (board.projectId) out.projectId = board.projectId;
+    else if (b.projectId !== undefined) out.projectId = checkProject(s, b.projectId);
+    return out;
+  };
+
+  app.post(
+    '/api/tasks',
+    h(async (req, res) => {
+      const b = (req.body ?? {}) as Record<string, unknown>;
+      let created = '';
+      await store.update((s) => {
+        const board = boardOf(s, b.boardId);
+        const columnId = b.columnId ? String(b.columnId) : board.columns[0].id;
+        if (!board.columns.some((c) => c.id === columnId)) throw new HttpError(400, 'Такой колонки нет.');
+        const f = taskFields(s, board, b, false);
+        const order = s.tasks.filter((t) => t.boardId === board.id && t.columnId === columnId).length;
+        created = cleanId(b.id) && !s.tasks.some((t) => t.id === b.id) ? (b.id as string) : randomUUID();
+        s.tasks.push({
+          id: created,
+          boardId: board.id,
+          columnId,
+          title: f.title!,
+          description: f.description ?? '',
+          checklist: f.checklist ?? [],
+          dueDate: f.dueDate ?? null,
+          priority: f.priority ?? 'none',
+          tags: f.tags ?? [],
+          projectId: f.projectId ?? board.projectId,
+          comments: [],
+          order,
+          createdAt: new Date().toISOString()
+        });
+      });
+      res.json({ id: created, state: await snapshot() });
+    })
+  );
+
+  app.put(
+    '/api/tasks/:id',
+    h(async (req, res) => {
+      const b = (req.body ?? {}) as Record<string, unknown>;
+      await store.update((s) => {
+        const t = taskOf(s, req.params.id);
+        const board = boardOf(s, t.boardId);
+        const f = taskFields(s, board, b, true);
+        // The time already tracked for the card keeps reading like the card.
+        if (f.title && f.title !== t.title) for (const e of s.entries) if (e.taskId === t.id && e.description === t.title) e.description = f.title;
+        Object.assign(t, f);
+      });
+      res.json(await snapshot());
+    })
+  );
+
+  /** Moves a card to a column (and a place in it). Never touches the timer. */
+  app.post(
+    '/api/tasks/:id/move',
+    h(async (req, res) => {
+      await store.update((s) => {
+        const t = taskOf(s, req.params.id);
+        const board = boardOf(s, t.boardId);
+        const columnId = String(req.body?.columnId ?? t.columnId);
+        if (!board.columns.some((c) => c.id === columnId)) throw new HttpError(400, 'Такой колонки нет.');
+        const from = t.columnId;
+        const column = s.tasks.filter((x) => x.boardId === board.id && x.columnId === columnId && x.id !== t.id).sort((a, c) => a.order - c.order);
+        const index = Math.round(num(req.body?.index, 0, column.length, column.length));
+        column.splice(index, 0, t);
+        t.columnId = columnId;
+        column.forEach((x, i) => (x.order = i));
+        if (from !== columnId) renumber(s, board.id, from);
+      });
+      res.json(await snapshot());
+    })
+  );
+
+  app.delete(
+    '/api/tasks/:id',
+    h(async (req, res) => {
+      await store.update((s) => {
+        const t = taskOf(s, req.params.id);
+        for (const e of s.entries) if (e.taskId === t.id) e.taskId = null; // the tracked time stays
+        s.tasks = s.tasks.filter((x) => x.id !== t.id);
+        renumber(s, t.boardId, t.columnId);
+      });
+      res.json(await snapshot());
+    })
+  );
+
+  app.post(
+    '/api/tasks/:id/comments',
+    h(async (req, res) => {
+      const text = str(req.body?.text, 4000);
+      if (!text) throw new HttpError(400, 'Комментарий пустой.');
+      await store.update((s) => {
+        taskOf(s, req.params.id).comments.push({ id: randomUUID().slice(0, 8), text, at: new Date().toISOString() });
+      });
+      res.json(await snapshot());
+    })
+  );
+
+  app.delete(
+    '/api/tasks/:id/comments/:cid',
+    h(async (req, res) => {
+      await store.update((s) => {
+        const t = taskOf(s, req.params.id);
+        t.comments = t.comments.filter((c) => c.id !== req.params.cid);
+      });
+      res.json(await snapshot());
+    })
+  );
+
   /* ---------------- backup / restore ---------------- */
 
   app.get(
@@ -531,6 +767,8 @@ export function createApp(store: StateStore, options: AppOptions = {}) {
           s.clients = incoming.clients;
           s.invoices = incoming.invoices;
           s.profile = incoming.profile;
+          s.boards = incoming.boards;
+          s.tasks = incoming.tasks;
           return result;
         }
         return mergeState(s, incoming);
@@ -570,6 +808,8 @@ export function createApp(store: StateStore, options: AppOptions = {}) {
         s.clients = copy.clients;
         s.invoices = copy.invoices;
         s.profile = copy.profile;
+        s.boards = copy.boards;
+        s.tasks = copy.tasks;
       });
       res.json({ state: await snapshot(), savedAs: before.id });
     })

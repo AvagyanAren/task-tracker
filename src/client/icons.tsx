@@ -1,5 +1,9 @@
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
+  KanbanIcon,
+  CheckListIcon,
+  Comment01Icon,
+  Flag01Icon,
   PlayIcon,
   MusicNote01Icon,
   PrinterIcon,
@@ -110,3 +114,8 @@ export const Copy = make(Copy01Icon);
 export const Info = make(InformationCircleIcon);
 export const Pause = make(PauseIcon);
 export const Refresh = make(RefreshIcon);
+
+export const Kanban = make(KanbanIcon);
+export const CheckList = make(CheckListIcon);
+export const Comment = make(Comment01Icon);
+export const Flag = make(Flag01Icon);

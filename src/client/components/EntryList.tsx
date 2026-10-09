@@ -6,7 +6,7 @@ import { addDays, dayKey, formatClock, formatHM, isoToLocalTime } from '../../sh
 import { api } from '../api.js';
 import { useApp } from '../ctx.js';
 import { formatDayTitle, formatMoneyMap } from '../format.js';
-import { ChevronDown, ChevronRight, Dollar, Pencil, Play, Plus, Timer, Trash } from '../icons.js';
+import { ChevronDown, ChevronRight, Dollar, Kanban, Pencil, Play, Plus, Timer, Trash } from '../icons.js';
 import { Empty, ProjectDot } from '../ui.js';
 import { EntryDialog } from './EntryDialog.js';
 
@@ -55,6 +55,11 @@ export function EntryList() {
       <div className={`entry ${nested ? 'nested' : ''} ${e.end === null ? 'is-running' : ''}`}>
         <div className="entry-main">
           <span className="entry-desc">{e.description || <em className="muted">(без названия)</em>}</span>
+          {e.taskId && (
+            <span className="task-ref" title="Время по задаче с доски">
+              <Kanban size={13} />
+            </span>
+          )}
           {p && (
             <span className="proj" style={{ color: p.color }}>
               <ProjectDot color={p.color} size={8} /> {p.name}
@@ -74,7 +79,7 @@ export function EntryList() {
         </span>
         <span className="entry-dur">{e.end ? formatClock(entrySeconds(e, now)) : 'идёт'}</span>
         <span className="entry-actions">
-          <button className="btn icon ghost" title="Продолжить" onClick={() => startTimer(e.description, e.projectId, e.tags, e.billable)}>
+          <button className="btn icon ghost" title="Продолжить" onClick={() => startTimer(e.description, e.projectId, e.tags, e.billable, e.taskId)}>
             <Play size={15} solid />
           </button>
           <button className="btn icon ghost" title="Править" onClick={() => setDialog({ entry: e })}>
@@ -145,7 +150,7 @@ export function EntryList() {
                     <span className="entry-time">{g.entries.length} записей</span>
                     <span className="entry-dur">{formatClock(sec)}</span>
                     <span className="entry-actions">
-                      <button className="btn icon ghost" title="Продолжить" onClick={() => startTimer(first.description, first.projectId, first.tags, first.billable)}>
+                      <button className="btn icon ghost" title="Продолжить" onClick={() => startTimer(first.description, first.projectId, first.tags, first.billable, first.taskId)}>
                         <Play size={15} solid />
                       </button>
                     </span>

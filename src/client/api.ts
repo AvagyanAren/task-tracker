@@ -1,4 +1,4 @@
-import type { Client, InvoiceRecord, Profile, State } from '../shared/types.js';
+import type { ChecklistItem, Client, InvoiceRecord, Priority, Profile, State } from '../shared/types.js';
 
 /** Minutes EAST of UTC for the browser's current timezone (UTC+4 -> 240). */
 export const tzOffset = () => -new Date().getTimezoneOffset();
@@ -40,6 +40,16 @@ export interface ProjectInput {
   color?: string;
   archived?: boolean;
   clientId?: string | null;
+}
+
+export interface TaskInput {
+  title?: string;
+  description?: string;
+  checklist?: Array<Pick<ChecklistItem, 'text' | 'done'> & { id?: string }>;
+  dueDate?: string | null;
+  priority?: Priority;
+  tags?: string[];
+  projectId?: string | null;
 }
 
 export type ClientInput = Partial<Pick<Client, 'name' | 'email' | 'address' | 'taxId' | 'currency' | 'dueDays' | 'notes' | 'archived'>>;
@@ -114,8 +124,17 @@ export const api = {
   createProject: (p: ProjectInput) => req<State>('POST', '/api/projects', p),
   updateProject: (id: string, p: ProjectInput) => req<State>('PUT', `/api/projects/${id}`, p),
   deleteProject: (id: string) => req<State>('DELETE', `/api/projects/${id}`),
-  startTimer: (description: string, projectId: string | null, tags: string[] = [], billable = true, own?: { id: string; at: string }) =>
-    req<State>('POST', '/api/timer/start', { description, projectId, tags, billable, ...own }),
+  startTimer: (description: string, projectId: string | null, tags: string[] = [], billable = true, own?: { id: string; at: string }, taskId?: string | null) =>
+    req<State>('POST', '/api/timer/start', { description, projectId, tags, billable, ...own, ...(taskId ? { taskId } : {}) }),
+  createBoard: (b: { projectId: string; name?: string }) => req<{ id: string; state: State }>('POST', '/api/boards', b),
+  updateBoard: (id: string, b: { name?: string; columns?: Array<{ id?: string; name: string }> }) => req<State>('PUT', `/api/boards/${id}`, b),
+  deleteBoard: (id: string) => req<State>('DELETE', `/api/boards/${id}`),
+  createTask: (t: TaskInput & { boardId: string; columnId?: string; title: string }) => req<{ id: string; state: State }>('POST', '/api/tasks', t),
+  updateTask: (id: string, t: TaskInput) => req<State>('PUT', `/api/tasks/${id}`, t),
+  moveTask: (id: string, columnId: string, index?: number) => req<State>('POST', `/api/tasks/${id}/move`, { columnId, index }),
+  deleteTask: (id: string) => req<State>('DELETE', `/api/tasks/${id}`),
+  addComment: (id: string, text: string) => req<State>('POST', `/api/tasks/${id}/comments`, { text }),
+  deleteComment: (id: string, cid: string) => req<State>('DELETE', `/api/tasks/${id}/comments/${cid}`),
   stopTimer: (own?: { id: string; at: string }) => req<State>('POST', '/api/timer/stop', own ?? {}),
   addEntry: (e: {
     id?: string;

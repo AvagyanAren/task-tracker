@@ -33,6 +33,8 @@ beforeEach(async () => {
   // clean slate
   const { body } = await call('GET', '/api/state');
   for (const e of (body as State).entries) await call('DELETE', `/api/entries/${e.id}`);
+  for (const t of (body as State).tasks) await call('DELETE', `/api/tasks/${t.id}`);
+  for (const b of (body as State).boards) if (b.id !== 'general') await call('DELETE', `/api/boards/${b.id}`);
   for (const p of (body as State).projects) await call('DELETE', `/api/projects/${p.id}`);
 });
 

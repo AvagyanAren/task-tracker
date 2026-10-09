@@ -139,7 +139,7 @@ export class RedisStore implements StateStore {
     const docs = new Map<string, string>();
     const names = [...byShard.keys()].sort();
     for (const name of names) docs.set(this.shardPrefix + name, JSON.stringify(byShard.get(name)));
-    docs.set(this.meta, JSON.stringify({ v: 2, projects: state.projects, clients: state.clients, invoices: state.invoices, profile: state.profile, shards: names }));
+    docs.set(this.meta, JSON.stringify({ v: 2, projects: state.projects, clients: state.clients, invoices: state.invoices, boards: state.boards, tasks: state.tasks, profile: state.profile, shards: names }));
     return docs;
   }
 

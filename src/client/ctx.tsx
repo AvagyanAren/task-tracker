@@ -15,7 +15,7 @@ export interface AppContext {
   /** Removes an entry at once and offers "Отменить" for a few seconds before it is deleted for good. */
   deleteEntry: (id: string) => void;
   /** Start / stop / add time. These keep working without a connection and are sent when it returns. */
-  startTimer: (description: string, projectId: string | null, tags: string[], billable: boolean) => Promise<boolean>;
+  startTimer: (description: string, projectId: string | null, tags: string[], billable: boolean, taskId?: string | null) => Promise<boolean>;
   stopTimer: () => Promise<boolean>;
   addEntry: (e: { description: string; projectId: string | null; tags: string[]; billable: boolean; start: string; end: string }) => Promise<boolean>;
   /** Throws away a just-started accidental timer, even one that has not reached the server yet. */

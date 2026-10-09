@@ -101,6 +101,57 @@ export interface Entry {
   externalId?: string;
   /** Set when the entry has been put on an invoice. */
   invoiceId?: string | null;
+  /** The task card this time was tracked for; the entry keeps the card's title as its description. */
+  taskId?: string | null;
+}
+
+export type Priority = 'none' | 'low' | 'medium' | 'high';
+
+export interface BoardColumn {
+  id: string;
+  name: string;
+}
+
+/**
+ * A kanban board. The general board (`projectId: null`, id "general") always exists;
+ * every project can have one board of its own.
+ */
+export interface Board {
+  id: string;
+  name: string;
+  projectId: string | null;
+  columns: BoardColumn[];
+  createdAt: string;
+}
+
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+export interface TaskComment {
+  id: string;
+  text: string;
+  at: string;
+}
+
+export interface Task {
+  id: string;
+  boardId: string;
+  columnId: string;
+  title: string;
+  description: string;
+  checklist: ChecklistItem[];
+  /** `YYYY-MM-DD` or null. */
+  dueDate: string | null;
+  priority: Priority;
+  tags: string[];
+  projectId: string | null;
+  comments: TaskComment[];
+  /** Position inside its column (0 = top). */
+  order: number;
+  createdAt: string;
 }
 
 export interface State {
@@ -109,4 +160,6 @@ export interface State {
   clients: Client[];
   invoices: InvoiceRecord[];
   profile: Profile;
+  boards: Board[];
+  tasks: Task[];
 }

@@ -6,7 +6,7 @@ import type { Entry, State } from '../shared/types.js';
  * recognise a request it already applied and keeps the real time, not the time of delivery.
  */
 export type Op =
-  | { kind: 'start'; id: string; at: string; description: string; projectId: string | null; tags: string[]; billable: boolean }
+  | { kind: 'start'; id: string; at: string; description: string; projectId: string | null; tags: string[]; billable: boolean; taskId?: string | null }
   | { kind: 'stop'; id: string; at: string }
   | { kind: 'add'; id: string; description: string; projectId: string | null; tags: string[]; billable: boolean; start: string; end: string };
 
@@ -32,7 +32,7 @@ export function applyQueue(state: State, ops: Op[]): State {
       if (byId(op.id)) continue;
       const running = entries.find((e) => e.end === null);
       if (running) closeAt(running, op.at);
-      entries.push({ id: op.id, description: op.description, projectId: op.projectId, tags: op.tags, billable: op.billable, start: op.at, end: null, source: 'timer' });
+      entries.push({ id: op.id, description: op.description, projectId: op.projectId, tags: op.tags, billable: op.billable, start: op.at, end: null, source: 'timer', ...(op.taskId ? { taskId: op.taskId } : {}) });
     } else if (op.kind === 'stop') {
       const target = op.id ? byId(op.id) : entries.find((e) => e.end === null);
       if (target && target.end === null) closeAt(target, op.at);

@@ -6,7 +6,7 @@ import { applyQueue, clearOffline, dropOpsFor, loadCache, loadQueue, newId, save
 import { Ctx, type AppContext } from './ctx.js';
 import { useHotkeys } from './hotkeys.js';
 import { type Optimistic } from './optimistic.js';
-import { Briefcase, Chart, FileImport, Help, Invoice, Settings as SettingsIcon, Timer } from './icons.js';
+import { Briefcase, Chart, FileImport, Help, Invoice, Kanban, Settings as SettingsIcon, Timer } from './icons.js';
 import { useSettings } from './settings.js';
 import { useIdle, type IdleInfo } from './useIdle.js';
 import { usePomodoro } from './usePomodoro.js';
@@ -24,11 +24,13 @@ import { InvoicesView } from './components/InvoicesView.js';
 import { ProjectsView } from './components/ProjectsView.js';
 import { ReportsView } from './components/ReportsView.js';
 import { SettingsDialog } from './components/SettingsDialog.js';
+import { TasksView } from './components/TasksView.js';
 import { TimerPage } from './components/TimerPage.js';
 
-type Tab = 'timer' | 'reports' | 'invoices' | 'projects' | 'import';
+type Tab = 'timer' | 'tasks' | 'reports' | 'invoices' | 'projects' | 'import';
 const NAV: Array<{ tab: Tab; label: string; icon: React.ReactNode }> = [
   { tab: 'timer', label: 'Таймер', icon: <Timer size={19} /> },
+  { tab: 'tasks', label: 'Задачи', icon: <Kanban size={19} /> },
   { tab: 'reports', label: 'Отчёты', icon: <Chart size={19} /> },
   { tab: 'invoices', label: 'Счета', icon: <Invoice size={19} /> },
   { tab: 'projects', label: 'Проекты', icon: <Briefcase size={19} /> },
@@ -190,7 +192,7 @@ export default function App() {
   /* ---------- actions that work offline ---------- */
 
   const sendOp = (op: Op): Promise<State> => {
-    if (op.kind === 'start') return api.startTimer(op.description, op.projectId, op.tags, op.billable, { id: op.id, at: op.at });
+    if (op.kind === 'start') return api.startTimer(op.description, op.projectId, op.tags, op.billable, { id: op.id, at: op.at }, op.taskId);
     if (op.kind === 'stop') return api.stopTimer({ id: op.id, at: op.at });
     return api.addEntry({ id: op.id, description: op.description, projectId: op.projectId, tags: op.tags, billable: op.billable, start: op.start, end: op.end });
   };
@@ -261,8 +263,8 @@ export default function App() {
   );
 
   const startTimer = useCallback(
-    (description: string, projectId: string | null, tags: string[], billable: boolean) =>
-      perform({ kind: 'start', id: newId(), at: new Date().toISOString(), description, projectId, tags, billable }),
+    (description: string, projectId: string | null, tags: string[], billable: boolean, taskId?: string | null) =>
+      perform({ kind: 'start', id: newId(), at: new Date().toISOString(), description, projectId, tags, billable, ...(taskId ? { taskId } : {}) }),
     [perform]
   );
   const stopTimer = useCallback(() => {
@@ -287,7 +289,7 @@ export default function App() {
     [commit, run, setQueue]
   );
 
-  const emptyState = useMemo<State>(() => ({ projects: [], entries: [] }) as unknown as State, []);
+  const emptyState = useMemo<State>(() => ({ projects: [], entries: [], boards: [], tasks: [] }) as unknown as State, []);
   const pomo = usePomodoro({ state: state ?? emptyState, now, cfg: settings.pomodoro, run });
 
   useIdle({
@@ -323,7 +325,7 @@ export default function App() {
     continueLast: () => {
       if (!state || running) return;
       const last = [...state.entries].sort((a, b) => (a.start < b.start ? 1 : -1))[0];
-      if (last) void startTimer(last.description, last.projectId, last.tags, last.billable);
+      if (last) void startTimer(last.description, last.projectId, last.tags, last.billable, last.taskId);
     },
     help: () => setDialog('help')
   });
@@ -375,6 +377,7 @@ export default function App() {
 
         <main className="content">
           {tab === 'timer' && <TimerPage pomo={pomo} onFocus={() => setFocus(true)} />}
+          {tab === 'tasks' && <TasksView />}
           {tab === 'reports' && <ReportsView />}
           {tab === 'invoices' && <InvoicesView />}
           {tab === 'projects' && <ProjectsView />}
