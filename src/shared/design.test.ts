@@ -95,6 +95,7 @@ describe('дизайн-система: контраст WCAG 2.2 AA', () => {
       const bg = colour('--immersive-bg', theme);
       expect(ratio(colour('--immersive-text', theme), bg)).toBeGreaterThanOrEqual(4.5);
       expect(ratio(colour('--immersive-text-2', theme, bg), bg)).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(colour('--immersive-line', theme, bg), bg)).toBeGreaterThanOrEqual(3);
       const paper = colour('--paper-bg', theme);
       for (const t of ['--paper-text', '--paper-text-2', '--paper-muted']) expect(ratio(colour(t, theme), paper)).toBeGreaterThanOrEqual(4.5);
     }

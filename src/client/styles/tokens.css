@@ -93,9 +93,11 @@
   --focus-offset: 2px;
 
   /* Full-screen focus mode: always dark, whatever the theme. */
-  --immersive-bg: var(--n-950);
-  --immersive-text: var(--white);
-  --immersive-text-2: rgb(255 255 255 / 0.72);
+  --immersive-bg: #0d0c0b;
+  --immersive-text: #e6e1d6;
+  --immersive-text-2: rgb(230 225 214 / 0.62);
+  --immersive-line: rgb(230 225 214 / 0.4);
+  --immersive-hover: rgb(230 225 214 / 0.08);
 
   /* Printed invoice: always light, shares nothing with the app theme. */
   --paper-bg: var(--white);
@@ -119,6 +121,7 @@
   --fs-5xl: 48px;
   --fs-display: clamp(64px, 14vw, 150px);
 
+  --fw-light: 300;
   --fw-medium: 500;
   --fw-semibold: 600;
   --fw-bold: 700;
@@ -132,7 +135,7 @@
   --ls-caps: 0.06em;
 
   /* Text styles: use `font: var(--type-…)`; add letter-spacing / transform next to it when the style needs it. */
-  --type-display: var(--fw-extrabold) var(--fs-display) / var(--lh-tight) var(--font);
+  --type-display: var(--fw-light) var(--fs-display) / var(--lh-tight) var(--font);
   --type-title: var(--fw-extrabold) var(--fs-3xl) / var(--lh-tight) var(--font);
   --type-heading: var(--fw-extrabold) var(--fs-xl) / var(--lh-snug) var(--font);
   --type-subheading: var(--fw-bold) var(--fs-lg) / var(--lh-snug) var(--font);

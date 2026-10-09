@@ -1,5 +1,7 @@
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
+  FullScreenIcon,
+  MinimizeScreenIcon,
   KanbanIcon,
   CheckListIcon,
   Comment01Icon,
@@ -119,3 +121,5 @@ export const Kanban = make(KanbanIcon);
 export const CheckList = make(CheckListIcon);
 export const Comment = make(Comment01Icon);
 export const Flag = make(Flag01Icon);
+export const Expand = make(FullScreenIcon);
+export const Collapse = make(MinimizeScreenIcon);

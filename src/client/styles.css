@@ -345,15 +345,25 @@ label.field, .field { display: flex; flex-direction: column; gap: 5px; }
 .facts dt { color: var(--text-2); }
 .facts dd { margin: 0; font-weight: 700; text-align: right; }
 
-/* ---------- focus mode ---------- */
-.focus { position: fixed; inset: 0; z-index: var(--z-immersive); display: grid; place-items: center; background: var(--immersive-bg); color: var(--immersive-text); animation: fade var(--dur-slow); }
-.focus .hint { color: var(--immersive-text-2); }
-.focus .btn.ghost { color: var(--immersive-text-2); }
-.focus-close { position: absolute; top: 22px; right: 22px; }
-.focus-body { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; padding: 20px; }
-.focus-project { font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; font-size: var(--fs-sm); color: var(--immersive-text-2); }
-.focus-clock { font-size: var(--fs-display); font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; line-height: 1; }
-.focus-pomo { font-size: var(--fs-xl); font-weight: 700; color: var(--immersive-text-2); }
+/* ---------- focus mode: a calm, dim screen (think iPhone StandBy), never a loud one ---------- */
+html:has(.focus) { overflow: hidden; }
+.focus { position: fixed; inset: 0; z-index: var(--z-immersive); display: grid; place-items: center; overflow: hidden; scrollbar-width: none; color-scheme: dark; background: var(--immersive-bg); color: var(--immersive-text); animation: fade var(--dur-slow); }
+.focus.idle { cursor: none; }
+.focus-top { position: absolute; top: var(--sp-5); right: var(--sp-5); display: flex; gap: var(--sp-2); transition: opacity var(--dur-slow) var(--ease); }
+.focus-icon { display: inline-grid; place-items: center; width: var(--h); height: var(--h); border: 0; border-radius: var(--r-pill); background: transparent; color: var(--immersive-text-2); cursor: pointer; transition: background var(--dur-fast), color var(--dur-fast); }
+.focus-icon:hover { background: var(--immersive-hover); color: var(--immersive-text); }
+.focus-body { display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); text-align: center; padding: var(--sp-5); max-width: 100%; transition: transform 4s var(--ease); }
+.focus-project { display: inline-flex; align-items: center; gap: var(--sp-2); font: var(--type-body); color: var(--immersive-text-2); }
+.focus h1 { margin: 0; max-width: 28ch; font: var(--fw-medium) var(--fs-2xl) / var(--lh-snug) var(--font); letter-spacing: 0; color: var(--immersive-text-2); overflow-wrap: anywhere; }
+.focus-clock { font: var(--type-display); letter-spacing: var(--ls-tight); font-variant-numeric: tabular-nums; color: var(--immersive-text); margin: var(--sp-2) 0; }
+.focus-pomo { min-height: 1.5em; font: var(--type-body); color: var(--immersive-text-2); }
+.focus-actions { display: flex; align-items: center; gap: var(--sp-3); margin-top: var(--sp-3); transition: opacity var(--dur-slow) var(--ease); }
+.focus-btn, .focus .tool { display: inline-flex; align-items: center; gap: var(--sp-2); height: var(--h); padding: 0 var(--sp-4); border: 1px solid var(--immersive-line); border-radius: var(--r-pill); background: transparent; color: var(--immersive-text-2); font: var(--type-body); cursor: pointer; transition: background var(--dur-fast), color var(--dur-fast); }
+.focus-btn:hover, .focus .tool:hover:not(:disabled), .focus .tool.on { background: var(--immersive-hover); color: var(--immersive-text); border-color: var(--immersive-line); }
+.focus.idle .focus-top, .focus.idle .focus-actions { opacity: 0; pointer-events: none; }
+.focus.idle .focus-top:focus-within, .focus.idle .focus-actions:focus-within { opacity: 1; pointer-events: auto; }
+.focus .popover { background: var(--surface); }
+@media (max-width: 720px) { .focus-top { top: var(--sp-3); right: var(--sp-3); } }
 
 /* ---------- ambient mixer / pomodoro extras ---------- */
 .mixer { display: flex; flex-direction: column; gap: 12px; width: 300px; padding: 6px; }
