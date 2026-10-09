@@ -6,7 +6,7 @@ import { applyQueue, clearOffline, dropOpsFor, loadCache, loadQueue, newId, save
 import { Ctx, type AppContext } from './ctx.js';
 import { useHotkeys } from './hotkeys.js';
 import { type Optimistic } from './optimistic.js';
-import { Briefcase, Chart, FileImport, Help, Invoice, Kanban, Settings as SettingsIcon, Timer } from './icons.js';
+import { Briefcase, Chart, ChevronLeft, FileImport, Help, Invoice, Kanban, Settings as SettingsIcon, Timer } from './icons.js';
 import { useSettings } from './settings.js';
 import { useIdle, type IdleInfo } from './useIdle.js';
 import { usePomodoro } from './usePomodoro.js';
@@ -47,6 +47,23 @@ export default function App() {
   const [settings, setSettings] = useSettings();
   const [dialog, setDialog] = useState<'settings' | 'help' | null>(hash.includes('settings') ? 'settings' : hash.includes('help') ? 'help' : null);
   const [focus, setFocus] = useState(false);
+  // The desktop sidebar can shrink to icons; the choice is remembered on this device.
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('tempo.sidebar') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleSidebar = () =>
+    setCollapsed((c) => {
+      try {
+        localStorage.setItem('tempo.sidebar', c ? '0' : '1');
+      } catch {
+        /* remembering is a convenience only */
+      }
+      return !c;
+    });
   const [idle, setIdle] = useState<IdleInfo | null>(null);
   const tz = tzOffset();
 
@@ -344,16 +361,19 @@ export default function App() {
 
   return (
     <Ctx.Provider value={ctx}>
-      <div className="shell">
+      <div className={collapsed ? 'shell collapsed' : 'shell'}>
         <aside className="sidebar">
           <div className="brand">
             <Logo size={32} />
             <span className="brand-name">Tempo</span>
+            <button className="sidebar-toggle" onClick={toggleSidebar} aria-expanded={!collapsed} aria-label={collapsed ? 'Развернуть меню' : 'Свернуть меню'} title={collapsed ? 'Развернуть меню' : 'Свернуть меню'}>
+              <ChevronLeft size={16} />
+            </button>
           </div>
 
           <nav className="nav" aria-label="Разделы">
             {NAV.map((n) => (
-              <button key={n.tab} aria-current={tab === n.tab ? 'page' : undefined} className={`${tab === n.tab ? 'nav-item active' : 'nav-item'} ${n.tab === 'import' ? 'nav-desktop' : ''}`} onClick={() => setTab(n.tab)}>
+              <button key={n.tab} aria-current={tab === n.tab ? 'page' : undefined} className={`${tab === n.tab ? 'nav-item active' : 'nav-item'} ${n.tab === 'import' ? 'nav-desktop' : ''}`} title={collapsed ? n.label : undefined} onClick={() => setTab(n.tab)}>
                 {n.icon}
                 <span>{n.label}</span>
                 {n.tab === 'timer' && isRunning && <i className="nav-live" aria-label="Идёт таймер" />}
@@ -362,11 +382,11 @@ export default function App() {
           </nav>
 
           <div className="sidebar-foot">
-            <button className="nav-item" onClick={() => setDialog('help')}>
+            <button className="nav-item" title={collapsed ? 'Горячие клавиши' : undefined} onClick={() => setDialog('help')}>
               <Help size={19} />
               <span>Горячие клавиши</span>
             </button>
-            <button className="nav-item" onClick={() => setDialog('settings')}>
+            <button className="nav-item" title={collapsed ? 'Настройки' : undefined} onClick={() => setDialog('settings')}>
               <SettingsIcon size={19} />
               <span>Настройки</span>
             </button>
