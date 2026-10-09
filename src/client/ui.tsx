@@ -165,6 +165,7 @@ export function SettingRow({ title, hint, children }: { title: string; hint?: Re
 /** Number input with a unit inside the field ("25 мин"). */
 export function NumberField({
   label,
+  ariaLabel,
   value,
   unit,
   min,
@@ -172,6 +173,7 @@ export function NumberField({
   onChange
 }: {
   label?: string;
+  ariaLabel?: string;
   value: number;
   unit?: string;
   min: number;
@@ -185,7 +187,7 @@ export function NumberField({
         min={min}
         max={max}
         value={value}
-        aria-label={label}
+        aria-label={label ?? ariaLabel}
         onChange={(e) => {
           const n = Math.round(Number(e.target.value));
           if (Number.isFinite(n)) onChange(Math.min(max, Math.max(min, n)));

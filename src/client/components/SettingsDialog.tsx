@@ -1,11 +1,12 @@
 import { confirmDialog } from '../confirm.js';
 import { useEffect, useState } from 'react';
-import { Computer, Moon, Sun } from '../icons.js';
+import { Bell, Briefcase, Computer, Moon, Settings as SettingsIcon, Sun, Timer, Wallet, Download, Coffee } from '../icons.js';
 import { api, type BackupInfo } from '../api.js';
 import { useApp } from '../ctx.js';
 import { idleSupported, requestIdlePermission } from '../useIdle.js';
 import { askNotificationPermission } from '../sound.js';
 import { Dialog, NumberField, Segmented, SettingRow, Switch } from '../ui.js';
+import { Select } from './fields.js';
 import type { Theme } from '../settings.js';
 
 /** Backup and transfer of the whole database, plus sign-out for the online version. */
@@ -96,7 +97,6 @@ function DataSection() {
 
   return (
     <section className="sgroup">
-      <h3>Данные</h3>
       <SettingRow title="Резервная копия" hint={`Сейчас в базе: ${state.entries.length} записей, ${state.projects.length} проектов`}>
         <button className="btn subtle" onClick={() => void download()}>
           Скачать
@@ -170,11 +170,79 @@ function DataSection() {
   );
 }
 
-export function SettingsDialog({ onClose }: { onClose: () => void }) {
+/** Sender details and invoice defaults, shared by every invoice. */
+function ProfileSection() {
+  const { state, run } = useApp();
+  const p = state.profile;
+  const [sender, setSender] = useState(p.sender);
+  const [lang, setLang] = useState(p.lang);
+  const [dueDays, setDueDays] = useState(p.dueDays);
+  const [notes, setNotes] = useState(p.notes);
+  const set = (patch: Partial<typeof sender>) => setSender((s) => ({ ...s, ...patch }));
+  const dirty = JSON.stringify([sender, lang, dueDays, notes]) !== JSON.stringify([p.sender, p.lang, p.dueDays, p.notes]);
+  return (
+    <section className="sgroup">
+      <p className="hint">Эти данные подставляются в каждый новый счёт. В уже выставленных счетах ничего не меняется.</p>
+      <div className="form-stack">
+        <label className="field">
+          <span>Ваше имя или компания</span>
+          <input value={sender.name} onChange={(e) => set({ name: e.target.value })} placeholder="ИП Иванов / Tamchys Fit" />
+        </label>
+        <div className="grid2">
+          <label className="field">
+            <span>Email</span>
+            <input value={sender.email} onChange={(e) => set({ email: e.target.value })} placeholder="me@example.com" />
+          </label>
+          <div className="field">
+            <span>Язык счёта по умолчанию</span>
+            <Select<'ru' | 'en'> value={lang} ariaLabel="Язык счёта" options={[{ value: 'ru', label: 'Русский' }, { value: 'en', label: 'English' }]} onChange={setLang} />
+          </div>
+        </div>
+        <label className="field">
+          <span>Адрес</span>
+          <textarea rows={2} value={sender.address} onChange={(e) => set({ address: e.target.value })} />
+        </label>
+        <label className="field">
+          <span>Реквизиты для оплаты</span>
+          <textarea rows={3} value={sender.payment} onChange={(e) => set({ payment: e.target.value })} placeholder="Банк, IBAN / номер счёта, SWIFT" />
+        </label>
+        <div className="grid2">
+          <div className="field">
+            <span>Срок оплаты</span>
+            <NumberField value={dueDays} unit="дн." min={0} max={365} onChange={setDueDays} />
+          </div>
+        </div>
+        <label className="field">
+          <span>Примечание в конце счёта</span>
+          <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Спасибо за сотрудничество" />
+        </label>
+        <div className="row end">
+          <button className="btn primary" disabled={!dirty} onClick={() => void run(() => api.saveProfile({ sender, lang, dueDays, notes }))}>
+            Сохранить
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+type SectionId = 'general' | 'timer' | 'pomodoro' | 'notify' | 'profile' | 'data';
+const SECTIONS: Array<{ id: SectionId; label: string; hint: string; icon: React.ReactNode }> = [
+  { id: 'general', label: 'Основные', hint: 'Тема, записи, клавиши', icon: <SettingsIcon size={17} /> },
+  { id: 'timer', label: 'Таймер', hint: 'Оплата, простой, напоминания', icon: <Timer size={17} /> },
+  { id: 'pomodoro', label: 'Pomodoro', hint: 'Интервалы и цель на день', icon: <Coffee size={17} /> },
+  { id: 'notify', label: 'Уведомления', hint: 'Звук и окна браузера', icon: <Bell size={17} /> },
+  { id: 'profile', label: 'Профиль и счета', hint: 'Ваши реквизиты', icon: <Briefcase size={17} /> },
+  { id: 'data', label: 'Данные', hint: 'Копии, перенос, выход', icon: <Download size={17} /> }
+];
+
+export function SettingsDialog({ onClose, initial = 'general' }: { onClose: () => void; initial?: SectionId }) {
   const { settings, setSettings, notify } = useApp();
+  const [section, setSection] = useState<SectionId>(initial);
   const [idleNote, setIdleNote] = useState<string | null>(null);
   const p = settings.pomodoro;
   const setPomo = (patch: Partial<typeof p>) => setSettings({ pomodoro: { ...p, ...patch } });
+  const current = SECTIONS.find((s) => s.id === section)!;
 
   const toggleIdle = async (on: boolean) => {
     if (!on) return setSettings({ idleEnabled: false });
@@ -189,68 +257,110 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const onNavKey = (e: React.KeyboardEvent) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const i = SECTIONS.findIndex((s) => s.id === section);
+    const d = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : -1;
+    const next = SECTIONS[(i + d + SECTIONS.length) % SECTIONS.length];
+    setSection(next.id);
+    requestAnimationFrame(() => document.getElementById(`stab-${next.id}`)?.focus());
+  };
+
   return (
     <Dialog title="Настройки" onClose={onClose} wide className="settings-dialog">
-      <div className="settings">
-        <section className="sgroup">
-          <h3>Оформление</h3>
-          <SettingRow title="Тема">
-            <Segmented<Theme>
-              label="Тема"
-              value={settings.theme}
-              onChange={(theme) => setSettings({ theme })}
-              options={[
-                { value: 'auto', label: <><Computer size={15} /> Авто</>, title: 'Как в системе' },
-                { value: 'light', label: <><Sun size={15} /> Светлая</> },
-                { value: 'dark', label: <><Moon size={15} /> Тёмная</> }
-              ]}
-            />
-          </SettingRow>
-        </section>
-
-        <section className="sgroup">
-          <h3>Записи</h3>
-          <Switch checked={settings.groupSimilar} onChange={(groupSimilar) => setSettings({ groupSimilar })} label="Склеивать похожие записи" hint="Одинаковые задачи за один день показываются одной строкой" />
-          <Switch checked={settings.hotkeys} onChange={(hotkeys) => setSettings({ hotkeys })} label="Горячие клавиши" hint="N, S, M, C и ? — работают вне полей ввода" />
-        </section>
-
-        <section className="sgroup">
-          <h3>Определение простоя</h3>
-          <Switch checked={settings.idleEnabled} onChange={toggleIdle} label="Спрашивать про время, пока вас не было" hint={idleSupported() ? 'Нужно разрешение браузера' : 'Нужен Chrome или Edge: другие браузеры не сообщают о простое'} />
-          <SettingRow title="Считать простоем после">
-            <NumberField value={settings.idleMinutes} unit="мин" min={1} max={120} onChange={(idleMinutes) => setSettings({ idleMinutes })} />
-          </SettingRow>
-          {idleNote && <p className="hint">{idleNote}</p>}
-        </section>
-
-        <section className="sgroup">
-          <h3>Pomodoro</h3>
-          <div className="nfields">
-            <NumberField label="Работа" unit="мин" value={p.workMin} min={1} max={180} onChange={(workMin) => setPomo({ workMin })} />
-            <NumberField label="Перерыв" unit="мин" value={p.shortBreakMin} min={1} max={60} onChange={(shortBreakMin) => setPomo({ shortBreakMin })} />
-            <NumberField label="Длинный" unit="мин" value={p.longBreakMin} min={1} max={120} onChange={(longBreakMin) => setPomo({ longBreakMin })} />
-            <NumberField label="Длинный после" unit="шт." value={p.longEvery} min={2} max={12} onChange={(longEvery) => setPomo({ longEvery })} />
-          </div>
-          <SettingRow title="Цель на день" hint="Сколько помидоров вы хотите набрать">
-            <NumberField value={p.dailyGoal} unit="шт." min={0} max={30} onChange={(dailyGoal) => setPomo({ dailyGoal })} />
-          </SettingRow>
-          <Switch checked={p.autoStart} onChange={(autoStart) => setPomo({ autoStart })} label="Автозапуск следующего помидора" hint="После перерыва таймер стартует сам" />
-          <Switch checked={p.gentleSound} onChange={(gentleSound) => setPomo({ gentleSound })} label="Мягкий звук" hint="Плавный сигнал вместо резкого" />
-          <SettingRow title="Уведомления" hint="Показывать окно, когда помидор или перерыв закончились">
-            <button
-              className="btn subtle"
-              onClick={async () => {
-                const r = await askNotificationPermission();
-                notify(r === 'granted' ? 'Уведомления включены' : 'Уведомления не разрешены — останется только звук');
-              }}
-            >
-              Разрешить
+      <div className="settings-body">
+        <nav className="settings-nav" role="tablist" aria-orientation="vertical" aria-label="Разделы настроек" onKeyDown={onNavKey}>
+          {SECTIONS.map((s) => (
+            <button key={s.id} id={`stab-${s.id}`} role="tab" aria-selected={section === s.id} aria-controls="spanel" tabIndex={section === s.id ? 0 : -1} className={section === s.id ? 'snav active' : 'snav'} onClick={() => setSection(s.id)}>
+              {s.icon}
+              <span>{s.label}</span>
             </button>
-          </SettingRow>
-        </section>
+          ))}
+        </nav>
 
-        <DataSection />
+        <div className="settings-panel" id="spanel" role="tabpanel" aria-labelledby={`stab-${section}`}>
+          <header className="settings-head">
+            <h3>{current.label}</h3>
+            <p className="muted">{current.hint}</p>
+          </header>
+
+          {section === 'general' && (
+            <section className="sgroup">
+              <SettingRow title="Тема" hint="«Авто» следует настройке системы">
+                <Segmented<Theme>
+                  label="Тема"
+                  value={settings.theme}
+                  onChange={(theme) => setSettings({ theme })}
+                  options={[
+                    { value: 'auto', label: <><Computer size={15} /> Авто</>, title: 'Как в системе' },
+                    { value: 'light', label: <><Sun size={15} /> Светлая</> },
+                    { value: 'dark', label: <><Moon size={15} /> Тёмная</> }
+                  ]}
+                />
+              </SettingRow>
+              <Switch checked={settings.groupSimilar} onChange={(groupSimilar) => setSettings({ groupSimilar })} label="Склеивать похожие записи" hint="Одинаковые задачи за один день показываются одной строкой" />
+              <Switch checked={settings.hotkeys} onChange={(hotkeys) => setSettings({ hotkeys })} label="Горячие клавиши" hint="N, S, M, C и ? — работают вне полей ввода" />
+            </section>
+          )}
+
+          {section === 'timer' && (
+            <section className="sgroup">
+              <Switch checked={settings.defaultBillable} onChange={(defaultBillable) => setSettings({ defaultBillable })} label="Новое время оплачивается" hint="Можно переключить для каждой записи отдельно" />
+              <SettingRow title="Напомнить, если таймер идёт дольше" hint="Один раз на таймер. 0 — не напоминать">
+                <NumberField ariaLabel="Напомнить, если таймер идёт дольше" value={settings.longTimerHours} unit="ч" min={0} max={24} onChange={(longTimerHours) => setSettings({ longTimerHours })} />
+              </SettingRow>
+              <Switch checked={settings.idleEnabled} onChange={toggleIdle} label="Спрашивать про время, пока вас не было" hint={idleSupported() ? 'Нужно разрешение браузера' : 'Нужен Chrome или Edge: другие браузеры не сообщают о простое'} />
+              <SettingRow title="Считать простоем после" hint="Работает, когда включено определение простоя">
+                <NumberField ariaLabel="Считать простоем после" value={settings.idleMinutes} unit="мин" min={1} max={120} onChange={(idleMinutes) => setSettings({ idleMinutes })} />
+              </SettingRow>
+              {idleNote && <p className="hint">{idleNote}</p>}
+            </section>
+          )}
+
+          {section === 'pomodoro' && (
+            <section className="sgroup">
+              <div className="nfields">
+                <NumberField label="Работа" unit="мин" value={p.workMin} min={1} max={180} onChange={(workMin) => setPomo({ workMin })} />
+                <NumberField label="Перерыв" unit="мин" value={p.shortBreakMin} min={1} max={60} onChange={(shortBreakMin) => setPomo({ shortBreakMin })} />
+                <NumberField label="Длинный" unit="мин" value={p.longBreakMin} min={1} max={120} onChange={(longBreakMin) => setPomo({ longBreakMin })} />
+                <NumberField label="Длинный после" unit="шт." value={p.longEvery} min={2} max={12} onChange={(longEvery) => setPomo({ longEvery })} />
+              </div>
+              <SettingRow title="Цель на день" hint="Сколько помидоров вы хотите набрать">
+                <NumberField ariaLabel="Цель на день" value={p.dailyGoal} unit="шт." min={0} max={30} onChange={(dailyGoal) => setPomo({ dailyGoal })} />
+              </SettingRow>
+              <Switch checked={p.autoStart} onChange={(autoStart) => setPomo({ autoStart })} label="Автозапуск следующего помидора" hint="После перерыва таймер стартует сам" />
+            </section>
+          )}
+
+          {section === 'notify' && (
+            <section className="sgroup">
+              <Switch checked={p.gentleSound} onChange={(gentleSound) => setPomo({ gentleSound })} label="Мягкий звук" hint="Плавный сигнал вместо резкого, когда помидор или перерыв закончились" />
+              <SettingRow title="Уведомления браузера" hint="Показывать окно, когда помидор или перерыв закончились">
+                <button
+                  className="btn subtle"
+                  onClick={async () => {
+                    const r = await askNotificationPermission();
+                    notify(r === 'granted' ? 'Уведомления включены' : 'Уведомления не разрешены — останется только звук');
+                  }}
+                >
+                  Разрешить
+                </button>
+              </SettingRow>
+              <SettingRow title="Напоминание о долгом таймере" hint="Включается в разделе «Таймер»">
+                <button className="btn subtle" onClick={() => setSection('timer')}>
+                  Перейти
+                </button>
+              </SettingRow>
+            </section>
+          )}
+
+          {section === 'profile' && <ProfileSection />}
+          {section === 'data' && <DataSection />}
+        </div>
       </div>
     </Dialog>
   );
 }
+
+void Wallet;

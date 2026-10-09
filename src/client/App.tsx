@@ -159,6 +159,19 @@ export default function App() {
   const fail = useCallback((m: string) => show(m, true), [show]);
   const notify = useCallback((m: string) => show(m, false), [show]);
 
+  // One gentle reminder per timer that has been running for hours (a forgotten timer is the classic mistake).
+  const remindedFor = useRef<string | null>(null);
+  useEffect(() => {
+    const h = settings.longTimerHours;
+    if (!running || h <= 0 || remindedFor.current === running.id) return;
+    const hours = (now - Date.parse(running.start)) / 3_600_000;
+    if (hours >= h) {
+      remindedFor.current = running.id;
+      show(`Таймер идёт уже ${Math.floor(hours)} ч. Не забыли его остановить?`, false);
+    }
+  }, [now, running, settings.longTimerHours, show]);
+
+
   // With `optimistic` the screen changes at once; the server answer then replaces it, or
   // the previous state is put back if the request fails.
   const run = useCallback(

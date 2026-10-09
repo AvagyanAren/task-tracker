@@ -22,14 +22,14 @@ interface Props {
 }
 
 export function TimerBar({ pomo, onFocus }: Props) {
-  const { state, now, tz, run, fail, notify, startTimer, stopTimer, addEntry, discardEntry } = useApp();
+  const { state, now, tz, run, fail, notify, startTimer, stopTimer, addEntry, discardEntry, settings } = useApp();
   const running: Entry | undefined = state.entries.find((e) => e.end === null);
   const [mode, setMode] = useState<Mode>('timer');
 
   const [description, setDescription] = useState('');
   const [projectId, setProjectId] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
-  const [billable, setBillable] = useState(true);
+  const [billable, setBillable] = useState(settings.defaultBillable);
   const descRef = useRef<HTMLInputElement>(null);
 
   // manual mode

@@ -11,6 +11,10 @@ export interface Settings {
   groupSimilar: boolean;
   idleEnabled: boolean;
   idleMinutes: number;
+  /** New timers start as billable (money-earning) or not. */
+  defaultBillable: boolean;
+  /** Remind when one timer has run this many hours; 0 = never. */
+  longTimerHours: number;
   pomodoro: PomodoroSettings;
   view: TimerView;
   ambient: AmbientSettings;
@@ -22,6 +26,8 @@ export const DEFAULT_SETTINGS: Settings = {
   groupSimilar: true,
   idleEnabled: false,
   idleMinutes: 5,
+  defaultBillable: true,
+  longTimerHours: 0,
   pomodoro: DEFAULT_POMODORO,
   view: 'list',
   ambient: DEFAULT_AMBIENT
