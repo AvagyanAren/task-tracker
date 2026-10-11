@@ -589,7 +589,7 @@ input:hover:not(:focus):not(:disabled), textarea:hover:not(:focus):not(:disabled
 .minitimer-text { display: flex; flex-direction: column; min-width: 0; max-width: 220px; }
 .minitimer-text strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-md); }
 .minitimer-text small { display: flex; align-items: center; gap: 5px; color: var(--text-3); font-size: var(--fs-xs); }
-.minitimer-clock { font-weight: 800; font-size: var(--fs-lg); font-variant-numeric: tabular-nums; }
+.minitimer-clock { min-width: 8ch; text-align: right; font-weight: 800; font-size: var(--fs-lg); font-variant-numeric: tabular-nums; }
 .minitimer-stop.round { width: 40px; height: 40px; }
 @media (min-width: 721px) { .shell:has(.minitimer) .content { padding-bottom: 96px; } .minitimer { left: calc(var(--sidebar) + 16px); } }
 
@@ -828,15 +828,17 @@ input:hover:not(:focus):not(:disabled), textarea:hover:not(:focus):not(:disabled
 .desc-wrap { position: relative; flex: 1; min-width: 160px; }
 .timer-desc { width: 100%; height: var(--h-lg); border: 0; box-shadow: none; background: transparent; font: var(--type-subheading); padding: 0 var(--sp-2); }
 .timer-desc:focus { box-shadow: none; }
+.timerbar-tools, .timerbar-modes, .timerbar-run { flex: none; }
 .timerbar-tools, .timerbar-modes { display: flex; align-items: center; gap: var(--sp-1); }
 .timerbar-modes { padding-left: var(--sp-3); border-left: 1px solid var(--border); gap: var(--sp-2); }
 .timerbar-run { display: flex; align-items: center; gap: var(--sp-3); padding-left: var(--sp-3); border-left: 1px solid var(--border); }
-.clock-wrap { display: flex; flex-direction: column; align-items: flex-end; min-width: 120px; }
-.clock { font: var(--type-title); letter-spacing: var(--ls-tight); font-variant-numeric: tabular-nums; color: var(--text-2); }
+.clock-wrap { display: flex; flex-direction: column; align-items: flex-end; }
+.clock { min-width: 8ch; text-align: right; font: var(--type-title); letter-spacing: var(--ls-tight); font-variant-numeric: tabular-nums; color: var(--text-2); }
 .clock.live { color: var(--text); }
 .startedat { padding: 0 var(--sp-1); }
 .mini-time { width: 78px; height: var(--h-sm); padding: 0 var(--sp-2); font-size: var(--fs-xs); }
-.pomo-chip { font: var(--type-caption); padding: var(--sp-1) var(--sp-3); border-radius: var(--r-pill); background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.pomo-chip { flex: none; width: 112px; padding: var(--sp-1) 0; border-radius: var(--r-pill); background: var(--surface-3); color: var(--text-2); font: var(--type-caption); font-variant-numeric: tabular-nums; text-align: center; white-space: nowrap; }
+.pomo-chip.live { background: var(--accent-soft); color: var(--accent); }
 
 /* Icon-only control for the bar: quiet until hovered, tinted when on. */
 .icon-tool { position: relative; display: inline-grid; place-items: center; width: var(--h); height: var(--h); border: 0; border-radius: var(--r); background: transparent; color: var(--text-2); cursor: pointer; transition: background var(--dur-fast), color var(--dur-fast); }
@@ -870,5 +872,6 @@ input:hover:not(:focus):not(:disabled), textarea:hover:not(:focus):not(:disabled
   .timerbar-modes { margin-left: auto; padding-left: 0; border-left: 0; }
   .timerbar-run { flex-basis: 100%; justify-content: space-between; padding: var(--sp-2) 0 0; border-left: 0; border-top: 1px solid var(--border); }
   .clock-wrap { align-items: flex-start; }
+  .clock { text-align: left; }
   .manual-row { grid-template-columns: 1fr 1fr; }
 }

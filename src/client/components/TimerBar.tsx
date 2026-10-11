@@ -264,9 +264,9 @@ export function TimerBar({ pomo, onFocus }: Props) {
 
         {mode === 'timer' ? (
           <div className="timerbar-run">
-            {pomo.session && (
-              <span className="pomo-chip" title="Pomodoro">
-                {pomo.session.phase === 'work' ? 'Работа' : 'Перерыв'} {formatCountdown(pomo.remaining)}
+            {pomo.enabled && (
+              <span className={pomo.session ? 'pomo-chip live' : 'pomo-chip'} title="Pomodoro">
+                {pomo.session ? `${pomo.session.phase === 'work' ? 'Работа' : 'Перерыв'} ${formatCountdown(pomo.remaining)}` : 'Pomodoro'}
               </span>
             )}
             <div className="clock-wrap">
