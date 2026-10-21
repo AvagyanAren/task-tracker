@@ -173,7 +173,7 @@ label.field, .field { display: flex; flex-direction: column; gap: 5px; }
 .tag-hash { color: var(--text-3); font-weight: 800; }
 
 /* ---------- timer bar ---------- */
-.timer-page { display: flex; flex-direction: column; gap: 22px; max-width: 1180px; margin: 0 auto; }
+.timer-page { container-type: inline-size; display: flex; flex-direction: column; gap: 22px; max-width: 1180px; margin: 0 auto; }
 .suggest { position: absolute; left: 0; right: 0; top: 100%; z-index: var(--z-popover); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-lg); padding: 6px; }
 .mini-time { width: 78px; padding: 3px 6px; font-size: var(--fs-xs); }
 .foot-right { display: flex; align-items: center; gap: 8px; }
@@ -207,8 +207,10 @@ label.field, .field { display: flex; flex-direction: column; gap: 5px; }
 .entry:hover { background: var(--surface-2); }
 .entry.nested { padding-left: 52px; background: var(--surface-2); }
 .entry.is-running { background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
-.entry-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.entry-desc { font-weight: 600; }
+.entry-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
+.entry-desc { font-weight: 600; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-main > .proj { flex: 0 1 auto; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-main > .tag { flex: none; }
 .entry .proj { color: var(--text-2); display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: var(--fs-sm); }
 .entry .tag { margin: 0; }
 .bill { color: var(--text-3); display: inline-flex; }
@@ -786,6 +788,16 @@ input:hover:not(:focus):not(:disabled), textarea:hover:not(:focus):not(:disabled
   .shell.collapsed .nav-live { position: absolute; top: 8px; right: 12px; margin: 0; }
 }
 @media (max-width: 720px) { .sidebar-toggle { display: none; } }
+/* Mid widths: sidebar is always icon-only, the toggle is hidden. */
+@media (min-width: 721px) and (max-width: 1100px) {
+  .shell, .shell.collapsed { --sidebar: 68px; }
+  .shell .brand { flex-direction: column; gap: 10px; padding: 4px 0 18px; }
+  .shell .brand-name, .shell .nav-item span { display: none; }
+  .shell .sidebar-toggle { display: none; }
+  .shell .nav-item { justify-content: center; padding: 11px 0; }
+  .shell .nav-live { position: absolute; top: 8px; right: 12px; margin: 0; }
+  .content { padding: 24px 20px 56px; }
+}
 
 /* ---------- settings: sections ---------- */
 .dialog.settings-dialog { width: min(880px, 100%); height: min(660px, calc(100vh - 40px)); display: flex; flex-direction: column; overflow: hidden; }
@@ -875,3 +887,29 @@ input:hover:not(:focus):not(:disabled), textarea:hover:not(:focus):not(:disabled
   .clock { text-align: left; }
   .manual-row { grid-template-columns: 1fr 1fr; }
 }
+
+/* ---------- container-based reflow (width of the content column, not the window) ---------- */
+@container (max-width: 820px) {
+  .timer-layout { grid-template-columns: 1fr; }
+  .side { position: static; }
+}
+@container (max-width: 760px) {
+  .timerbar-row { flex-wrap: wrap; row-gap: var(--sp-2); }
+  .desc-wrap { flex-basis: 100%; }
+  .timerbar-tools { flex: 1; min-width: 0; flex-wrap: wrap; }
+  .timerbar-modes { padding-left: 0; border-left: 0; }
+  .timerbar-run { margin-left: auto; }
+  .entry .tag, .entry-time { display: none; }
+  @media (min-width: 721px) { .entry { grid-template-columns: minmax(0, 1fr) 18px 76px; } }
+}
+@container (max-width: 520px) {
+  .timerbar-run { flex-basis: 100%; justify-content: space-between; padding: var(--sp-2) 0 0; border-left: 0; border-top: 1px solid var(--border); }
+  .clock-wrap { align-items: flex-start; }
+  .clock { text-align: left; }
+  .manual-row { grid-template-columns: 1fr 1fr; }
+  .entry .bill { display: none; }
+  .entry { grid-template-columns: minmax(0, 1fr) auto; }
+}
+.table-scroll, .card:has(> .table) { overflow-x: auto; }
+.page > *, .timer-main > * { min-width: 0; }
+.new-project { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
